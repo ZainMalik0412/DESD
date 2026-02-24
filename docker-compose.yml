@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: brfn_db
+      POSTGRES_USER: brfn_user
+      POSTGRES_PASSWORD: brfn_pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brfn_user -d brfn_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_ENGINE: postgresql
+      DATABASE_NAME: brfn_db
+      DATABASE_USER: brfn_user
+      DATABASE_PASSWORD: brfn_pass
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DJANGO_SECRET_KEY: change-me-in-production
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static_files:/app/staticfiles
+
+volumes:
+  postgres_data:
+  static_files:
