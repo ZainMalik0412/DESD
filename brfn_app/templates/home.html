@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,112 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bristol Regional Food Network</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-
-        header {
-            background: #4a7c59;
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        header h1 {
-            font-size: 1.2rem;
-        }
-
-        header nav {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        header nav a {
-            color: white;
-            text-decoration: none;
-        }
-
-        .user-menu {
-            position: relative;
-        }
-
-        .user-badge {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.3rem 0.8rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            cursor: pointer;
-        }
-
-        .user-dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            margin-top: 0.4rem;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            min-width: 120px;
-            z-index: 10;
-        }
-
-        .user-dropdown a {
-            display: block;
-            padding: 0.5rem 1rem;
-            color: #333 !important;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-
-        .user-dropdown a:hover {
-            background: #f0f0ea;
-        }
-
-        .user-menu.open .user-dropdown {
-            display: block;
-        }
-
-        .hero {
-            text-align: center;
-            padding: 3rem 1rem;
-            background: #f4f9f4;
-        }
-
-        .hero h2 {
-            margin-bottom: 0.5rem;
-        }
-
-        .hero p {
-            color: #666;
-            max-width: 500px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .hero a {
-            padding: 0.6rem 1.5rem;
-            background: #4a7c59;
-            color: white;
-            border-radius: 4px;
-            text-decoration: none;
-        }
-
-        footer {
-            text-align: center;
-            padding: 1rem;
-            font-size: 0.85rem;
-            color: #999;
-            border-top: 1px solid #eee;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
 
 <body>
