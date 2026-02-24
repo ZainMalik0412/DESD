@@ -8,3 +8,4 @@ env/
 venv/
 alex_notes.txt
 staticfiles/
+.windsurf/

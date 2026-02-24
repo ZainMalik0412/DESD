@@ -9,7 +9,14 @@
         body { font-family: Arial, sans-serif; color: #333; background: #fafaf7; }
         header { background: #4a7c59; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
         header h1 { font-size: 1.2rem; }
-        header nav a { color: white; margin-left: 1rem; text-decoration: none; }
+        header nav { display: flex; align-items: center; gap: 1rem; }
+        header nav a { color: white; text-decoration: none; }
+        .user-menu { position: relative; }
+        .user-badge { background: rgba(255,255,255,0.2); padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; }
+        .user-dropdown { display: none; position: absolute; right: 0; top: 100%; margin-top: 0.4rem; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 10; }
+        .user-dropdown a { display: block; padding: 0.5rem 1rem; color: #333 !important; text-decoration: none; font-size: 0.85rem; }
+        .user-dropdown a:hover { background: #f0f0ea; }
+        .user-menu.open .user-dropdown { display: block; }
         .page { padding: 2rem; max-width: 900px; margin: 0 auto; }
         h2 { margin-bottom: 1.5rem; }
         .filters { margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -35,7 +42,15 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-                <a href="/accounts/logout/">Log Out ({{ user.username }})</a>
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <a href="/accounts/logout/">Log Out</a>
+                    </div>
+                </div>
             {% else %}
                 <a href="/accounts/login/">Log In</a>
             {% endif %}
@@ -53,15 +68,9 @@
             </select>
             <button type="submit">Search</button>
         </form>
-
         {% if search %}
-            <p class="search-summary">
-                Showing results for "<strong>{{ search }}</strong>"
-                {% if selected_category %} in category <strong>{{ selected_category }}</strong>{% endif %}
-                – {{ products|length }} product{{ products|length|pluralize }} found
-            </p>
+            <p class="search-summary">Showing results for "<strong>{{ search }}</strong>" – {{ products|length }} product{{ products|length|pluralize }} found</p>
         {% endif %}
-
         {% if products %}
             <div class="product-grid">
                 {% for product in products %}
@@ -70,9 +79,7 @@
                         <p class="producer">Sold by: {{ product.producer.username }}</p>
                         <span class="category-tag">{{ product.category.name }}</span>
                         <p class="price">£{{ product.price }} / {{ product.unit }}</p>
-                        {% if product.description %}
-                            <p class="description">{{ product.description }}</p>
-                        {% endif %}
+                        {% if product.description %}<p class="description">{{ product.description }}</p>{% endif %}
                     </div>
                 {% endfor %}
             </div>
