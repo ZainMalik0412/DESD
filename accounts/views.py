@@ -2,7 +2,10 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from .models import CustomUser
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 
+# PAGE VIEWS
 
 def login_view(request):
     if request.method == 'POST':
@@ -37,3 +40,37 @@ def register(request):
             login(request, user)
             return redirect('/')
     return render(request, 'accounts/register.html', {'error': error})
+
+@login_required
+def transaction_history(request):
+    """View transaction history page - displays user's past transactions."""
+    pass
+
+
+@login_required
+def current_orders(request):
+    """View current/in-progress orders page."""
+    pass
+
+# HELPER FUNCTIONS
+
+def authorise(user, action):
+    """
+    Checks if user has permission to perform action.
+    Will use postgres for permission checking.
+    
+    Note: Consider moving to a separate utils.py or permissions.py file.
+    """
+    pass
+
+def login_helper(user):
+    """Login helper function."""
+    pass
+
+def logout_helper(user):
+    """Logout helper function."""
+    pass
+
+def register_helper(user):
+    """Register helper function."""
+    pass
