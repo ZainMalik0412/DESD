@@ -23,3 +23,10 @@
 - Implemented UK postcode validation
 - Implemented product data validation
 - Implemented order status transition validation
+# V1.0.6 - Sebastian Macfarlane Woodley
+- Linked accounts and marketplace with real views and templates
+- Wired up ProductForm and natively rendered Django fields in add_product.html
+- Resolved server-side form validation bypass for pricing and hooked up UI error rendering
+- Resolved silent UI failure by adding missing is_available flag to product form
+- Configured WhiteNoise for static file serving in Docker
+- Created pop_database.py to automatically seed food categories and test users

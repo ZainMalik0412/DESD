@@ -1,12 +1,14 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Product – BRFN</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
+
 <body class="app-body">
     <header>
         <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
@@ -32,45 +34,77 @@
         <form method="post">
             {% csrf_token %}
 
+            {% if form.non_field_errors %}
+            <div class="alert alert-error" style="margin-bottom: 1rem;">
+                {{ form.non_field_errors.0 }}
+            </div>
+            {% endif %}
+
             <div class="form-group">
-                <label for="name">Product Name *</label>
-                <input type="text" id="name" name="name" required>
+                <label for="{{ form.name.id_for_label }}">Product Name *</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                    form.name.errors.0 }}</div>
+                {% endif %}
             </div>
 
             <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description"></textarea>
+                <label for="{{ form.description.id_for_label }}">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                    form.description.errors.0 }}</div>
+                {% endif %}
             </div>
 
             <div class="form-group">
-                <label for="category">Category *</label>
-                <select id="category" name="category" required>
-                    <option value="">Select a category</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat.id }}">{{ cat.name }}</option>
-                    {% endfor %}
-                </select>
+                <label for="{{ form.category.id_for_label }}">Category *</label>
+                {{ form.category }}
+                {% if form.category.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                    form.category.errors.0 }}</div>
+                {% endif %}
             </div>
 
             <div class="row">
                 <div class="form-group">
-                    <label for="price">Price (£) *</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" required>
+                    <label for="{{ form.price.id_for_label }}">Price (£) *</label>
+                    {{ form.price }}
+                    {% if form.price.errors %}
+                    <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                        form.price.errors.0 }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="unit">Unit</label>
-                    <select id="unit" name="unit">
-                        {% for value, label in units %}
-                            <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
+                    <label for="{{ form.unit.id_for_label }}">Unit</label>
+                    {{ form.unit }}
+                    {% if form.unit.errors %}
+                    <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                        form.unit.errors.0 }}</div>
+                    {% endif %}
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="stock_quantity">Stock Quantity</label>
-                <input type="number" id="stock_quantity" name="stock_quantity" min="0" value="0">
+                <label for="{{ form.stock_quantity.id_for_label }}">Stock Quantity</label>
+                {{ form.stock_quantity }}
+                {% if form.stock_quantity.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                    form.stock_quantity.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group checkbox-group"
+                style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                {{ form.is_available }}
+                <label for="{{ form.is_available.id_for_label }}" style="margin-bottom: 0;">Available for sale
+                    immediately</label>
+                {% if form.is_available.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem; margin-top: 0.25rem;">{{
+                    form.is_available.errors.0 }}</div>
+                {% endif %}
             </div>
 
             <button type="submit">Add Product</button>
@@ -79,4 +113,5 @@
 
     <footer>&copy; 2026 Bristol Regional Food Network</footer>
 </body>
+
 </html>

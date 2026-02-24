@@ -41,6 +41,8 @@ def product_detail(request, product_id):
     pass
 
 
+from .forms import ProductForm
+
 @login_required(login_url='/accounts/login/')
 def add_product(request):
     """Add new product page - allows producers to add new products."""
@@ -48,42 +50,30 @@ def add_product(request):
     if request.user.role != 'producer':
         return redirect('/browse/')
 
-    categories = Category.objects.filter(is_active=True)
     error = None
     success = None
 
     if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        description = request.POST.get('description', '').strip()
-        category_id = request.POST.get('category')
-        price = request.POST.get('price')
-        unit = request.POST.get('unit', 'item')
-        stock = request.POST.get('stock_quantity', 0)
-
-        if not name or not price or not category_id:
-            error = 'Please fill in all required fields.'
-        else:
+        form = ProductForm(request.POST)
+        if form.is_valid():
             try:
-                category = Category.objects.get(id=category_id)
-                Product.objects.create(
-                    name=name,
-                    description=description,
-                    category=category,
-                    producer=request.user,
-                    price=price,
-                    unit=unit,
-                    stock_quantity=stock,
-                    is_available=True,
-                )
-                success = f'"{name}" has been added successfully!'
-            except Category.DoesNotExist:
-                error = 'Invalid category selected.'
+                # Don't save to DB yet, we need to attach the producer
+                product = form.save(commit=False)
+                product.producer = request.user
+                product.save()
+                success = f'"{product.name}" has been added successfully!'
+                # Clear the form after successful submission
+                form = ProductForm()
             except Exception as e:
                 error = f'Error adding product: {e}'
+        else:
+            # The form contains validation errors
+            error = 'Please correct the errors below.'
+    else:
+        form = ProductForm()
 
     return render(request, 'marketplace/add_product.html', {
-        'categories': categories,
-        'units': Product.Unit.choices,
+        'form': form,
         'error': error,
         'success': success,
     })
