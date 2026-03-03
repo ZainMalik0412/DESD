@@ -1,0 +1,12 @@
+[
+{
+  "model": "marketplace.category",
+  "pk": 1,
+  "fields": {
+    "name": "test",
+    "slug": "test",
+    "description": "if you can see this under produce categories, data has been loaded successfully",
+    "is_active": true
+  }
+}
+]

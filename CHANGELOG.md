@@ -30,3 +30,11 @@
 - Resolved silent UI failure by adding missing is_available flag to product form
 - Configured WhiteNoise for static file serving in Docker
 - Created pop_database.py to automatically seed food categories and test users
+# V1.0.9 - Alex McBride
+- Added Postgres DB integration via migration of structure to sqlite3 for now
+- Added fixture to read/write saved data for population (can be loaded into local sqlite3 via: `python manage.py loaddata categories` AFTER running migrate. Saved data can be overwritten via: `python manage.py dumpdata marketplace.Category --indent 2 > marketplace/fixtures/categories.json`, which will take from your local sqlite3 file)
+- Added .env.example (environment variable template)
+- Added more migration files for models
+- Extended models
+- Registered models in admin panel
+- Added 1 new dependency in requirements
