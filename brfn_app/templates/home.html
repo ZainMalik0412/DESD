@@ -17,17 +17,21 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-            {% if user.role == 'producer' %}
-            <a href="/browse/add-product/">Add Product</a>
-            {% endif %}
-            <div class="user-menu" onclick="this.classList.toggle('open')">
-                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
-                <div class="user-dropdown">
-                    <a href="/accounts/logout/">Log Out</a>
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/my-orders/">My Orders</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <a href="/accounts/logout/">Log Out</a>
+                    </div>
                 </div>
-            </div>
             {% else %}
-            <a href="/accounts/login/">Log In</a>
+                <a href="/accounts/login/">Log In</a>
             {% endif %}
         </nav>
     </header>

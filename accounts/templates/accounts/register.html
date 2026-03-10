@@ -1,12 +1,14 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register – BRFN</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
+
 <body class="auth-body">
     <header>
         <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
@@ -14,6 +16,13 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/my-orders/">My Orders</a>
+                {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
                     <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
                     <div class="user-dropdown">
@@ -26,32 +35,71 @@
         </nav>
     </header>
 
-    <div class="page">
+    <div class="page page-form">
         <h2>Create Account</h2>
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        {{ form.non_field_errors }}
         <form method="post">
             {% csrf_token %}
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <label for="{{ form.first_name.id_for_label }}">First Name</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
             </div>
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email">
+                <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}
             </div>
             <div class="form-group">
-                <label for="role">I am a...</label>
-                <select id="role" name="role">
-                    <option value="customer">Customer</option>
-                    <option value="producer">Producer</option>
-                    <option value="community_group">Community Group</option>
-                    <option value="restaurant">Restaurant / Café</option>
-                </select>
+                <label for="{{ form.username.id_for_label }}">Username</label>
+                {{ form.username }}
+                {% if form.username.errors %}<div class="field-error">{{ form.username.errors.0 }}</div>{% endif %}
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <label for="{{ form.email.id_for_label }}">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
             </div>
+            <div class="form-group">
+                <label for="{{ form.phone.id_for_label }}">Phone Number</label>
+                {{ form.phone }}
+                {% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.delivery_address.id_for_label }}">Delivery Address</label>
+                {{ form.delivery_address }}
+                {% if form.delivery_address.errors %}<div class="field-error">{{ form.delivery_address.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.postcode.id_for_label }}">Postcode</label>
+                {{ form.postcode }}
+                {% if form.postcode.errors %}<div class="field-error">{{ form.postcode.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.role.id_for_label }}">I am a...</label>
+                {{ form.role }}
+                {% if form.role.errors %}<div class="field-error">{{ form.role.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">Password</label>
+                {{ form.password }}
+                {% if form.password.errors %}<div class="field-error">{{ form.password.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password_confirm.id_for_label }}">Confirm Password</label>
+                {{ form.password_confirm }}
+                {% if form.password_confirm.errors %}<div class="field-error">{{ form.password_confirm.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                {{ form.accept_terms }}
+                <label for="{{ form.accept_terms.id_for_label }}" style="margin-bottom: 0;">I accept the terms and
+                    conditions</label>
+            </div>
+            {% if form.accept_terms.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
+                form.accept_terms.errors.0 }}</div>{% endif %}
             <button type="submit">Register</button>
         </form>
         <p class="link">Already have an account? <a href="/accounts/login/">Log In</a></p>
@@ -59,4 +107,5 @@
 
     <footer>&copy; 2026 Bristol Regional Food Network</footer>
 </body>
+
 </html>

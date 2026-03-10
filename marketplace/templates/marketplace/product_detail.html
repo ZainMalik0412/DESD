@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }} – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+            {% if user.role == 'producer' %}
+            <a href="/browse/add-product/">Add Product</a>
+            <a href="/orders/manage/">Manage Orders</a>
+            {% else %}
+            <a href="/orders/cart/">Cart</a>
+            <a href="/orders/my-orders/">My Orders</a>
+            {% endif %}
+            <div class="user-menu" onclick="this.classList.toggle('open')">
+                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                <div class="user-dropdown">
+                    <a href="/accounts/logout/">Log Out</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <div class="page-wide">
+        <p class="link" style="text-align: left; margin-bottom: 1rem;"><a href="/browse/">← Back to Browse</a></p>
+
+        <div class="product-card" style="max-width: 700px;">
+            <span class="category-tag">{{ product.category.name }}</span>
+            <h2 style="margin: 0.5rem 0;">{{ product.name }}</h2>
+            <p class="producer">By {{ product.producer.username }}</p>
+
+            {% if product.description %}
+            <p class="description">{{ product.description }}</p>
+            {% endif %}
+
+            <p class="price" style="font-size: 1.3rem; margin: 1rem 0;">£{{ product.price }} / {{ product.get_unit_display }}</p>
+
+            <p style="font-size: 0.9rem; color: #666;">
+                Stock: {{ product.stock_quantity }} available
+                {% if not product.is_available %}<span style="color: #c00;"> (Currently unavailable)</span>{% endif %}
+            </p>
+
+            {% if user.is_authenticated and product.is_available %}
+            <form method="post" action="/orders/cart/add/{{ product.id }}/"
+                style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem;">
+                {% csrf_token %}
+                <label for="quantity" style="font-size: 0.9rem;">Qty:</label>
+                <input type="number" name="quantity" id="quantity" value="1" min="1"
+                    style="width: 70px; padding: 0.4rem;">
+                <button type="submit" class="btn" style="width: auto;">Add to Cart</button>
+            </form>
+            {% endif %}
+
+            {% if user.is_authenticated and user == product.producer %}
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                <a href="/browse/product/{{ product.id }}/edit/" class="btn" style="width: auto;">Edit</a>
+                <a href="/browse/product/{{ product.id }}/delete/" class="btn"
+                    style="width: auto; background: #c00;">Delete</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+
+</html>

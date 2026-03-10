@@ -21,9 +21,13 @@ def browse(request):
     if producer_name:
         products = products.filter(producer__username=producer_name)
 
+    category_list = list(categories)
+    for cat in category_list:
+        cat.is_selected = (category_slug == cat.slug)
+
     return render(request, 'marketplace/browse.html', {
         'products': products,
-        'categories': categories,
+        'categories': category_list,
         'search': search,
         'selected_category': category_slug,
         'producer_name': producer_name,
@@ -38,7 +42,8 @@ def producers(request):
 
 def product_detail(request, product_id):
     """Product detail page - displays detailed information about a single product."""
-    pass
+    product = get_object_or_404(Product, id=product_id)
+    return render(request, 'marketplace/product_detail.html', {'product': product})
 
 
 from .forms import ProductForm
@@ -79,10 +84,42 @@ def add_product(request):
     })
 
 
-@login_required
+@login_required(login_url='/accounts/login/')
 def edit_product(request, product_id):
     """Change product information page - allows producers to update their products."""
-    pass
+    product = get_object_or_404(Product, id=product_id, producer=request.user)
+
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        form = ProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            success = f'"{product.name}" has been updated successfully!'
+        else:
+            error = 'Please correct the errors below.'
+    else:
+        form = ProductForm(instance=product)
+
+    return render(request, 'marketplace/edit_product.html', {
+        'form': form,
+        'product': product,
+        'error': error,
+        'success': success,
+    })
+
+
+@login_required(login_url='/accounts/login/')
+def delete_product(request, product_id):
+    """Delete a product - only the producer who owns it can delete it."""
+    product = get_object_or_404(Product, id=product_id, producer=request.user)
+
+    if request.method == 'POST':
+        product.delete()
+        return redirect('/browse/')
+
+    return render(request, 'marketplace/delete_product.html', {'product': product})
 
 
 @login_required

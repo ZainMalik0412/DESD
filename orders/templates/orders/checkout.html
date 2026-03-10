@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/my-orders/">My Orders</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <a href="/accounts/logout/">Log Out</a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <div class="page page-form">
+        <h2>Checkout</h2>
+
+        <h3>Order Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+            {% for item in items %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.5rem 0;">{{ item.product.name }} × {{ item.quantity }}</td>
+                <td style="padding: 0.5rem 0; text-align: right;">£{{ item.line_total }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 2px solid #333;">
+                <td style="padding: 0.75rem 0;"><strong>Total</strong></td>
+                <td style="padding: 0.75rem 0; text-align: right;"><strong>£{{ cart.total }}</strong></td>
+            </tr>
+        </table>
+
+        <h3>Delivery Details</h3>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" value="{{ user.first_name }} {{ user.last_name }}"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}" required>
+            </div>
+            <div class="form-group">
+                <label for="address_line1">Address Line 1</label>
+                <input type="text" id="address_line1" name="address_line1" value="{{ user.delivery_address }}" required>
+            </div>
+            <div class="form-group">
+                <label for="address_line2">Address Line 2</label>
+                <input type="text" id="address_line2" name="address_line2">
+            </div>
+            <div class="form-group">
+                <label for="city">City</label>
+                <input type="text" id="city" name="city" value="Bristol" required>
+            </div>
+            <div class="form-group">
+                <label for="postcode">Postcode</label>
+                <input type="text" id="postcode" name="postcode" value="{{ user.postcode }}" required>
+            </div>
+            <button type="submit">Place Order</button>
+        </form>
+        <p class="link"><a href="/orders/cart/">← Back to cart</a></p>
+    </div>
+
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+
+</html>

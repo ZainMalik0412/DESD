@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order #{{ order.id }} – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/my-orders/">My Orders</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <a href="/accounts/logout/">Log Out</a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <div class="page-wide">
+        <h2>Order #{{ order.id }}</h2>
+
+        <div class="product-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+            <div class="product-card">
+                <h3>Order Info</h3>
+                <p>Status: <strong>{{ order.get_status_display }}</strong></p>
+                <p>Placed: {{ order.created_at|date:"d M Y, H:i" }}</p>
+                <p class="price">Total: £{{ order.total }}</p>
+            </div>
+            <div class="product-card">
+                <h3>Delivery Address</h3>
+                <p>{{ order.full_name }}</p>
+                <p>{{ order.address_line1 }}</p>
+                {% if order.address_line2 %}<p>{{ order.address_line2 }}</p>{% endif %}
+                <p>{{ order.city }}, {{ order.postcode }}</p>
+                <p>{{ order.email }}</p>
+            </div>
+        </div>
+
+        <h3>Items</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid #ddd; text-align: left;">
+                    <th style="padding: 0.75rem;">Product</th>
+                    <th style="padding: 0.75rem;">Price</th>
+                    <th style="padding: 0.75rem;">Qty</th>
+                    <th style="padding: 0.75rem;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem;">{{ item.product_name }}</td>
+                    <td style="padding: 0.75rem;">£{{ item.unit_price }}</td>
+                    <td style="padding: 0.75rem;">{{ item.quantity }}</td>
+                    <td style="padding: 0.75rem;"><strong>£{{ item.line_total }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="link" style="margin-top: 1.5rem;"><a href="/orders/my-orders/">← Back to My Orders</a></p>
+    </div>
+
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+
+</html>

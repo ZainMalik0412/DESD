@@ -191,10 +191,9 @@ class OrderStatusForm(forms.Form):
     """
     
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('accepted', 'Accepted'),
-        ('ready', 'Ready for Collection/Delivery'),
-        ('completed', 'Completed'),
+        ('placed', 'Placed'),
+        ('paid', 'Paid'),
+        ('fulfilled', 'Fulfilled'),
         ('cancelled', 'Cancelled'),
     ]
     
@@ -235,10 +234,9 @@ class OrderStatusForm(forms.Form):
             list: Allowed next statuses
         """
         allowed_transitions = {
-            'pending': ['accepted', 'cancelled'],
-            'accepted': ['ready', 'cancelled'],
-            'ready': ['completed', 'cancelled'],
-            'completed': [],  # Terminal state
+            'placed': ['paid', 'cancelled'],
+            'paid': ['fulfilled', 'cancelled'],
+            'fulfilled': [],  # Terminal state
             'cancelled': [],  # Terminal state
         }
         

@@ -164,3 +164,42 @@ def order_detail(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     items = order.items.all()
     return render(request, "orders/order_detail.html", {"order": order, "items": items})
+
+
+def _is_producer(user):
+    return getattr(user, "role", None) == "producer"
+
+
+@login_required
+def manage_orders(request):
+    if not _is_producer(request.user):
+        raise Http404
+    # Show orders that contain items from this producer
+    orders = Order.objects.filter(items__product__producer=request.user).distinct().order_by("-created_at")
+    return render(request, "orders/manage_orders.html", {"orders": orders})
+
+
+@login_required
+def manage_order_detail(request, order_id):
+    if not _is_producer(request.user):
+        raise Http404
+    
+    # Must contain at least one item from this producer
+    order = get_object_or_404(Order, id=order_id, items__product__producer=request.user)
+    items = order.items.filter(product__producer=request.user)
+    
+    from marketplace.forms import OrderStatusForm
+    if request.method == "POST":
+        form = OrderStatusForm(request.POST, current_status=order.status)
+        if form.is_valid():
+            order.status = form.cleaned_data["status"]
+            order.save(update_fields=["status"])
+            return redirect("orders:manage_order_detail", order_id=order.id)
+    else:
+        form = OrderStatusForm(initial={"status": order.status}, current_status=order.status)
+        
+    return render(request, "orders/manage_order_detail.html", {
+        "order": order,
+        "items": items,
+        "form": form
+    })

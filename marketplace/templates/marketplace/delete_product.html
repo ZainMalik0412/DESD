@@ -1,13 +1,15 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log In – BRFN</title>
+    <title>Delete {{ product.name }} – BRFN</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
-<body class="auth-body">
+
+<body class="app-body">
     <header>
         <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
         <nav>
@@ -34,23 +36,16 @@
     </header>
 
     <div class="page">
-        <h2>Log In</h2>
-        {% if form.errors %}
-            <p class="error">Invalid username or password.</p>
-        {% endif %}
+        <h2>Delete Product</h2>
+        <p>Are you sure you want to delete <strong>"{{ product.name }}"</strong>? This action cannot be undone.</p>
         <form method="post">
             {% csrf_token %}
-            {% for field in form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                </div>
-            {% endfor %}
-            <button type="submit">Log In</button>
+            <button type="submit" style="background: #c00;">Yes, Delete</button>
         </form>
-        <p class="link">Don't have an account? <a href="/accounts/register/">Register</a></p>
+        <p class="link"><a href="/browse/product/{{ product.id }}/">← Cancel</a></p>
     </div>
 
     <footer>&copy; 2026 Bristol Regional Food Network</footer>
 </body>
+
 </html>

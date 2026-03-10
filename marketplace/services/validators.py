@@ -112,9 +112,9 @@ def validate_status_transition(current_status, new_status):
     
     Allowed transitions:
     - pending → accepted, cancelled
-    - accepted → ready, cancelled
-    - ready → completed, cancelled
-    - completed → (terminal state, no transitions)
+    - placed → paid, cancelled
+    - paid → fulfilled, cancelled
+    - fulfilled → (terminal state, no transitions)
     - cancelled → (terminal state, no transitions)
     
     Args:
@@ -129,10 +129,9 @@ def validate_status_transition(current_status, new_status):
     """
     # Define allowed transitions
     allowed_transitions = {
-        'pending': ['accepted', 'cancelled'],
-        'accepted': ['ready', 'cancelled'],
-        'ready': ['completed', 'cancelled'],
-        'completed': [],  # Terminal state
+        'placed': ['paid', 'cancelled'],
+        'paid': ['fulfilled', 'cancelled'],
+        'fulfilled': [],  # Terminal state
         'cancelled': [],  # Terminal state
     }
     

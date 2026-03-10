@@ -16,6 +16,10 @@
             {% if user.is_authenticated %}
                 {% if user.role == 'producer' %}
                     <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/my-orders/">My Orders</a>
                 {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
                     <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
