@@ -18,6 +18,7 @@
             {% if user.is_authenticated %}
             {% if user.role == 'producer' %}
             <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
             <a href="/orders/manage/">Manage Orders</a>
             {% else %}
             <a href="/orders/cart/">Cart</a>
@@ -39,7 +40,15 @@
         <p class="link" style="text-align: left; margin-bottom: 1rem;"><a href="/browse/">← Back to Browse</a></p>
 
         <div class="product-card" style="max-width: 700px;">
+            {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}"
+                style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;">
+            {% endif %}
+
             <span class="category-tag">{{ product.category.name }}</span>
+            <span class="category-tag" style="background: #e8f5e9; color: #2e7d32;">
+                {{ product.get_seasonal_status_display }}
+            </span>
             <h2 style="margin: 0.5rem 0;">{{ product.name }}</h2>
             <p class="producer">By {{ product.producer.username }}</p>
 
@@ -47,12 +56,27 @@
             <p class="description">{{ product.description }}</p>
             {% endif %}
 
-            <p class="price" style="font-size: 1.3rem; margin: 1rem 0;">£{{ product.price }} / {{ product.get_unit_display }}</p>
+            <p class="price" style="font-size: 1.3rem; margin: 1rem 0;">
+                £{{ product.price }} / {{ product.get_unit_display }}
+            </p>
 
             <p style="font-size: 0.9rem; color: #666;">
                 Stock: {{ product.stock_quantity }} available
-                {% if not product.is_available %}<span style="color: #c00;"> (Currently unavailable)</span>{% endif %}
+                {% if not product.is_available %}
+                <span style="color: #c00;"> (Currently unavailable)</span>
+                {% endif %}
             </p>
+
+            {% if product.allergen_info %}
+            <div
+                style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fff3e0; border-radius: 4px; font-size: 0.85rem;">
+                <strong>Alergen information:</strong> {{ product.allergen_info }}
+            </div>
+            {% endif %}
+
+            {% if product.harvest_date %}
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">Harvest Date: {{ product.harvest_date }}</p>
+            {% endif %}
 
             {% if user.is_authenticated and product.is_available %}
             <form method="post" action="/orders/cart/add/{{ product.id }}/"

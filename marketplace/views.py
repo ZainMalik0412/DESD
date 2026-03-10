@@ -46,6 +46,15 @@ def product_detail(request, product_id):
     return render(request, 'marketplace/product_detail.html', {'product': product})
 
 
+@login_required(login_url='/accounts/login/')
+def my_products(request):
+    """Producer dashboard - shows all products belonging to the logged-in producer."""
+    if request.user.role != 'producer':
+        return redirect('/browse/')
+    products = Product.objects.filter(producer=request.user).order_by('-created_at')
+    return render(request, 'marketplace/my_products.html', {'products': products})
+
+
 from .forms import ProductForm
 
 @login_required(login_url='/accounts/login/')
@@ -59,7 +68,7 @@ def add_product(request):
     success = None
 
     if request.method == 'POST':
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 # Don't save to DB yet, we need to attach the producer
@@ -93,7 +102,7 @@ def edit_product(request, product_id):
     success = None
 
     if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
+        form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
             form.save()
             success = f'"{product.name}" has been updated successfully!'

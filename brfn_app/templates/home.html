@@ -19,6 +19,7 @@
             {% if user.is_authenticated %}
             {% if user.role == 'producer' %}
             <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
             <a href="/orders/manage/">Manage Orders</a>
             {% else %}
             <a href="/orders/cart/">Cart</a>

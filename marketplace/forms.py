@@ -30,6 +30,10 @@ class ProductForm(forms.ModelForm):
             'stock_quantity',
             'category',
             'is_available',
+            'seasonal_status',
+            'allergen_info',
+            'harvest_date',
+            'image',
         ]
         widgets = {
             'description': forms.Textarea(attrs={
@@ -44,6 +48,13 @@ class ProductForm(forms.ModelForm):
             'stock_quantity': forms.NumberInput(attrs={
                 'min': '0',
                 'placeholder': '0'
+            }),
+            'allergen_info': forms.Textarea(attrs={
+                'rows': 2,
+                'placeholder': 'e.g. Contains eggs, milk, gluten'
+            }),
+            'harvest_date': forms.DateInput(attrs={
+                'type': 'date',
             }),
         }
     

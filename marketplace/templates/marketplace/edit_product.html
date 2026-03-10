@@ -16,21 +16,35 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-                {% if user.role == 'producer' %}
-                    <a href="/browse/add-product/">Add Product</a>
-                    <a href="/orders/manage/">Manage Orders</a>
-                {% else %}
-                    <a href="/orders/cart/">Cart</a>
-                    <a href="/orders/my-orders/">My Orders</a>
-                {% endif %}
-                <div class="user-menu" onclick="this.classList.toggle('open')">
-                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
-                    <div class="user-dropdown">
-                        <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">{% csrf_token %}<button type="submit" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">Log Out</button></form>
-                    </div>
-                </div>
+            {% if user.role == 'producer' %}
+            <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
+            <a href="/orders/manage/">Manage Orders</a>
             {% else %}
-                <a href="/accounts/login/">Log In</a>
+            <a href="/orders/cart/">Cart</a>
+            <a href="/orders/my-orders/">My Orders</a>
+            {% endif %}
+            <div class="user-menu" onclick="this.classList.toggle('open')">
+                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                <div class="user-dropdown">
+                    <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">{%
+                        csrf_token %}<button type="submit"
+                            style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">Log
+                            Out</button></form>
+                </div>
+            </div>
+            {% else %}
+            <a href="/orders/cart/">Cart</a>
+            <a href="/orders/my-orders/">My Orders</a>
+            {% endif %}
+            <div class="user-menu" onclick="this.classList.toggle('open')">
+                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                <div class="user-dropdown">
+                    <a href="/accounts/logout/">Log Out</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="/accounts/login/">Log In</a>
             {% endif %}
         </nav>
     </header>
@@ -41,13 +55,16 @@
         {% if success %}<p class="alert alert-success">{{ success }}</p>{% endif %}
         {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
                 <label for="{{ form.name.id_for_label }}">Product Name</label>
                 {{ form.name }}
-                {% if form.name.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
-                    form.name.errors.0 }}</div>{% endif %}
+                {% if form.name.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.name.errors.0 }}
+                </div>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label for="{{ form.description.id_for_label }}">Description</label>
@@ -61,8 +78,11 @@
                 <div class="form-group">
                     <label for="{{ form.price.id_for_label }}">Price (£)</label>
                     {{ form.price }}
-                    {% if form.price.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
-                        form.price.errors.0 }}</div>{% endif %}
+                    {% if form.price.errors %}
+                    <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                        {{ form.price.errors.0 }}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="form-group">
                     <label for="{{ form.unit.id_for_label }}">Unit</label>
@@ -72,9 +92,37 @@
             <div class="form-group">
                 <label for="{{ form.stock_quantity.id_for_label }}">Stock Quantity</label>
                 {{ form.stock_quantity }}
-                {% if form.stock_quantity.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
-                    {{ form.stock_quantity.errors.0 }}</div>{% endif %}
+                {% if form.stock_quantity.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.stock_quantity.errors.0 }}
+                </div>
+                {% endif %}
             </div>
+
+            <div class="form-group">
+                <label for="{{ form.seasonal_status.id_for_label }}">Seasonal Availability</label>
+                {{ form.seasonal_status }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.allergen_info.id_for_label }}">Allergen Information</label>
+                {{ form.allergen_info }}
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">List any allergens contained in this
+                    product</div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.harvest_date.id_for_label }}">Harvest / Production Date</label>
+                {{ form.harvest_date }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.image.id_for_label }}">Product Image (optional)</label>
+                {% if product.image %}<p style="font-size: 0.85rem; color: #666;">Current: {{ product.image.name }}</p>
+                {% endif %}
+                {{ form.image }}
+            </div>
+
             <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
                 {{ form.is_available }}
                 <label for="{{ form.is_available.id_for_label }}" style="margin-bottom: 0;">Available for

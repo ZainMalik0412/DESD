@@ -18,6 +18,7 @@
             {% if user.is_authenticated %}
             {% if user.role == 'producer' %}
             <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
             <a href="/orders/manage/">Manage Orders</a>
             {% else %}
             <a href="/orders/cart/">Cart</a>
@@ -41,13 +42,16 @@
         {% if error %}<p class="alert alert-error">{{ error }}</p>{% endif %}
         {% if success %}<p class="alert alert-success">{{ success }}</p>{% endif %}
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
                 <label for="{{ form.name.id_for_label }}">Product Name *</label>
                 {{ form.name }}
-                {% if form.name.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
-                    form.name.errors.0 }}</div>{% endif %}
+                {% if form.name.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.name.errors.0 }}
+                </div>
+                {% endif %}
             </div>
 
             <div class="form-group">
@@ -58,16 +62,22 @@
             <div class="form-group">
                 <label for="{{ form.category.id_for_label }}">Category *</label>
                 {{ form.category }}
-                {% if form.category.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
-                    form.category.errors.0 }}</div>{% endif %}
+                {% if form.category.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.category.errors.0 }}
+                </div>
+                {% endif %}
             </div>
 
             <div class="row">
                 <div class="form-group">
                     <label for="{{ form.price.id_for_label }}">Price (£) *</label>
                     {{ form.price }}
-                    {% if form.price.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
-                        form.price.errors.0 }}</div>{% endif %}
+                    {% if form.price.errors %}
+                    <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                        {{ form.price.errors.0 }}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
@@ -79,8 +89,33 @@
             <div class="form-group">
                 <label for="{{ form.stock_quantity.id_for_label }}">Stock Quantity</label>
                 {{ form.stock_quantity }}
-                {% if form.stock_quantity.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
-                    {{ form.stock_quantity.errors.0 }}</div>{% endif %}
+                {% if form.stock_quantity.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.stock_quantity.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.seasonal_status.id_for_label }}">Seasonal Availability</label>
+                {{ form.seasonal_status }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.allergen_info.id_for_label }}">Allergen Information</label>
+                {{ form.allergen_info }}
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">List any allergens contained in this
+                    product</div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.harvest_date.id_for_label }}">Harvest / Production Date</label>
+                {{ form.harvest_date }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.image.id_for_label }}">Product Image (optional)</label>
+                {{ form.image }}
             </div>
 
             <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">

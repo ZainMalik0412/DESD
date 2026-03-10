@@ -25,6 +25,13 @@ class Product(models.Model):
         ML = "ml", "ml"
         BUNCH = "bunch", "Bunch"
         PACK = "pack", "Pack"
+        DOZEN = "dozen", "Dozen"
+
+    class SeasonalStatus(models.TextChoices):
+        IN_SEASON = "in_season", "In Season"
+        OUT_OF_SEASON = "out_of_season", "Out of Season"
+        ALL_YEAR = "all_year", "Available All Year"
+        LIMITED = "limited", "Limited Availability"
 
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
     producer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="products")
@@ -35,6 +42,14 @@ class Product(models.Model):
     unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.ITEM)
     stock_quantity = models.PositiveIntegerField(default=0)
     is_available = models.BooleanField(default=True)
+    seasonal_status = models.CharField(
+        max_length=20,
+        choices=SeasonalStatus.choices,
+        default=SeasonalStatus.ALL_YEAR,
+    )
+    allergen_info = models.TextField(blank=True, help_text="List any allergens, e.g. Contains eggs")
+    harvest_date = models.DateField(null=True, blank=True, help_text="Date of harvest or production")
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
