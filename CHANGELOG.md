@@ -79,3 +79,9 @@
 - Fixed CSRF logout vulnerability: `logout_view` now requires POST (`@require_POST`): all logout links across all templates replaced with CSRF-token-protected POST forms (covers all 15 templates: accounts, marketplace, orders)
 - Improved `add_product` access control: non-producers now receive `403 Forbidden` instead of a silent redirect
 - Security review of merged code from main: confirmed all new orders views (`cart`, `checkout`, `order_detail`, `order_list`, `manage_orders`, `manage_order_detail`) are correctly guarded with `@login_required` and role checks (`_is_customer`, `_is_producer`), confirmed `edit_product` and `delete_product` use ownership-scoped `get_object_or_404` preventing cross-producer access
+# V1.0.13 - Sebastian Macfarlane Woodley
+- Expanded product model to match requirements of TC-003 , Seasonal Status, Allergen Info, Harvest Date
+- Added Ability to add images  using pillow to handle image processing. Serves files locally
+- Added My Products html page for producers to make managing stock, editing products and deleting products easier. Created my_products view using login required to ensure only producers can access their products. Code filters products to return products that match request.user. Orders by date
+- Updated produt form to handle new fields  and edit and delete pages support adding images also
+- Updated other templates to show new fields
