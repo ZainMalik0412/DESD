@@ -85,3 +85,14 @@
 - Added My Products html page for producers to make managing stock, editing products and deleting products easier. Created my_products view using login required to ensure only producers can access their products. Code filters products to return products that match request.user. Orders by date
 - Updated produt form to handle new fields  and edit and delete pages support adding images also
 - Updated other templates to show new fields
+# V1.0.14 - TJ
+- Created REST API endpoints for marketplace data
+- Added marketplace/api/serializers.py with ProductSerializer and CategorySerializer
+- Added marketplace/api/views.py with ProductViewSet and CategoryViewSet (read-only)
+- Added marketplace/api/urls.py with API routing using DRF routers
+- Integrated API into main project URLs at /api/
+- Configured REST Framework settings in settings.py (authentication, permissions, pagination)
+- API supports filtering products by category, search term, and producer
+- Implemented pagination (20 items per page) for product listings
+- API endpoints: GET /api/products/, GET /api/categories/
+- Provides JSON data for frontend JavaScript integration
