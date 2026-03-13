@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms & Conditions – BRFN</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="auth-body">
+  <header>
+    <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+    <nav>
+      <a href="/browse/">Browse</a>
+      <a href="/browse/producers/">Producers</a>
+      {% if user.is_authenticated %}
+        <a href="/accounts/logout/">Log Out</a>
+      {% else %}
+        <a href="/accounts/login/">Log In</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <div class="page page-form" style="max-width: 900px;">
+    <h2>Terms & Conditions</h2>
+    <p><strong>Last updated:</strong> [10/03/2026]</p>
+
+    <p>By creating an account or using this website, you agree to these Terms.</p>
+
+    <h3>1) About BRFN</h3>
+    <p>BRFN is an online marketplace that helps customers browse local food products and helps producers list and sell their products.</p>
+
+    <h3>2) Accounts</h3>
+    <ul>
+      <li>You must provide accurate information when registering.</li>
+      <li>Keep your password secure - anything done on your account is your responsibility.</li>
+      <li>Your account role (Customer/Producer) affects what features you can use.</li>
+    </ul>
+
+    <h3>3) Customers</h3>
+    <ul>
+      <li>You agree to provide correct delivery/contact details when placing orders.</li>
+      <li>You are responsible for checking product details (including allergens) before ordering.</li>
+    </ul>
+
+    <h3>4) Producers</h3>
+    <ul>
+      <li>You must ensure your product listings are accurate (name, price, description, availability/stock).</li>
+      <li>You are responsible for fulfilling orders and keeping availability up to date.</li>
+    </ul>
+
+    <h3>5) Orders and availability</h3>
+    <ul>
+      <li>Orders are placed through the website.</li>
+      <li>If an item is out of stock or unavailable, the producer may need to cancel or adjust the order.</li>
+      <li>Delivery/collection instructions shown during checkout should be followed.</li>
+    </ul>
+
+    <h3>6) Payments</h3>
+    <ul>
+      <li>Product prices are set by producers.</li>
+      <li>The platform may use third-party payment services.</li>
+    </ul>
+
+    <h3>7) Acceptable use</h3>
+    <p>You must not misuse the website, including:</p>
+    <ul>
+      <li>attempting to access other users' accounts or data</li>
+      <li>uploading harmful/illegal content</li>
+      <li>trying to break or disrupt the service</li>
+    </ul>
+
+    <h3>8) Privacy</h3>
+    <p>We store account and order information to run the marketplace. We do not share personal data unnecessarily.</p>
+
+    <h3>9) Changes</h3>
+    <p>We may update these Terms and website features as the system develops.</p>
+
+    <div style="margin-top: 1.5rem;">
+      <button type="button" onclick="history.back()">Return to previous page</button>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+</html>

@@ -93,10 +93,13 @@
                 {% if form.password_confirm.errors %}<div class="field-error">{{ form.password_confirm.errors.0 }}</div>
                 {% endif %}
             </div>
-            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                {{ form.accept_terms }}
-                <label for="{{ form.accept_terms.id_for_label }}" style="margin-bottom: 0;">I accept the terms and
-                    conditions</label>
+            <div class="form-group" style="display:flex; justify-content:center;">
+                <div style="display:flex; align-items:center; gap:0.2rem; margin:0 auto;">
+                    {{ form.accept_terms }}
+                    <label for="{{ form.accept_terms.id_for_label }}" style="margin:0; white-space:nowrap;">
+                        I accept the <a href="{% url 'terms' %}">Terms and Conditions</a>
+                    </label>
+                </div>
             </div>
             {% if form.accept_terms.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">{{
                 form.accept_terms.errors.0 }}</div>{% endif %}
