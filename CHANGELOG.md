@@ -103,3 +103,9 @@
 - Updated registration page to link to Terms page
 - Improved registration form styling in main.css
 - Tidied navigation/page flow for account signup
+# V1.0.16 - Zain Malik
+- Integrated Stripe Checkout test-mode payment flow into the orders app
+- Updated checkout to redirect to Stripe and handle success/cancel return pages
+- Added Stripe configuration to project settings, environment template, and docker-compose
+- Added a database seed command for sample categories, users, and products
+- Populated test data to support end to end checkout testing with sample items

@@ -5,3 +5,4 @@ psycopg2-binary==2.9.9
 gunicorn==23.0.0
 whitenoise==6.6.0
 Pillow==11.1.0
+stripe==8.0.0
