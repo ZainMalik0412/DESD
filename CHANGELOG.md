@@ -109,3 +109,5 @@
 - Added Stripe configuration to project settings, environment template, and docker-compose
 - Added a database seed command for sample categories, users, and products
 - Populated test data to support end to end checkout testing with sample items
+# V1.0.17 - Alex McBride
+- Added test cases 1-5
