@@ -21,7 +21,6 @@ class TC009ProducerDashboardTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-        # Users
         self.producer1 = CustomUser.objects.create_user(
             username='producer1', email='p1@test.com', password='Password123!', role=CustomUser.Role.PRODUCER,
             first_name='Peter', last_name='Piper', delivery_address='1 Farm Ln', postcode='BS1 1AA'
@@ -34,7 +33,6 @@ class TC009ProducerDashboardTests(TestCase):
             first_name='John', last_name='Doe', delivery_address='10 High St', postcode='BS2 2BB'
         )
 
-        # Categories & Products
         self.category = Category.objects.create(name='Produce', slug='produce')
         
         self.p1_product_1 = Product.objects.create(producer=self.producer1, category=self.category, name='Apples', price=Decimal('2.00'), stock_quantity=50)
@@ -42,20 +40,17 @@ class TC009ProducerDashboardTests(TestCase):
         
         self.p2_product_1 = Product.objects.create(producer=self.producer2, category=self.category, name='Bananas', price=Decimal('1.50'), stock_quantity=50)
 
-        # Create Baseline Requirements: 3 Orders for Producer1 with different delivery dates
         self.today = date.today()
         d1 = self.today + timedelta(days=5)
         d2 = self.today + timedelta(days=3)
         d3 = self.today + timedelta(days=7)
         
-        # Order 1 (Only Producer 1)
         self.order1 = Order.objects.create(
             user=self.customer, full_name='John Doe', email='j@test.com', address_line1='10 High St', city='Bristol', postcode='BS2 2BB',
             total=Decimal('4.00'), delivery_date=d1, status=Order.STATUS_PENDING
         )
         OrderItem.objects.create(order=self.order1, product=self.p1_product_1, product_name='Apples', unit_price=Decimal('2.00'), quantity=2, line_total=Decimal('4.00'))
 
-        # Order 2 (Multi-vendor)
         self.order2 = Order.objects.create(
             user=self.customer, full_name='John Doe', email='j@test.com', address_line1='10 High St', city='Bristol', postcode='BS2 2BB',
             total=Decimal('6.00'), delivery_date=d2, status=Order.STATUS_CONFIRMED
@@ -63,14 +58,12 @@ class TC009ProducerDashboardTests(TestCase):
         OrderItem.objects.create(order=self.order2, product=self.p1_product_2, product_name='Pears', unit_price=Decimal('3.00'), quantity=1, line_total=Decimal('3.00'))
         OrderItem.objects.create(order=self.order2, product=self.p2_product_1, product_name='Bananas', unit_price=Decimal('1.50'), quantity=2, line_total=Decimal('3.00'))
 
-        # Order 3 (Only Producer 1)
         self.order3 = Order.objects.create(
             user=self.customer, full_name='John Doe', email='j@test.com', address_line1='10 High St', city='Bristol', postcode='BS2 2BB',
             total=Decimal('10.00'), delivery_date=d3, status=Order.STATUS_READY
         )
         OrderItem.objects.create(order=self.order3, product=self.p1_product_1, product_name='Apples', unit_price=Decimal('2.00'), quantity=5, line_total=Decimal('10.00'))
 
-        # Order 4 (Only Producer 2 - Invisible to Producer 1)
         self.order4 = Order.objects.create(
             user=self.customer, full_name='Other Person', email='o@test.com', address_line1='10 Other St', city='Bristol', postcode='BS3 3CC',
             total=Decimal('1.50'), delivery_date=d1, status=Order.STATUS_PENDING
@@ -82,20 +75,16 @@ class TC009ProducerDashboardTests(TestCase):
         """Verifies explicitly that 48-hour lead time from order date is strictly enforced."""
         self.client.login(username='test_customer', password='Password123!')
         
-        # Add to cart
         cart, _ = Cart.objects.get_or_create(user=self.customer, status=Cart.STATUS_ACTIVE)
         CartItem.objects.create(cart=cart, product=self.p1_product_1, quantity=1)
         
-        # Attempt checkout + 1 day (FAILS)
         bad_date = (self.today + timedelta(days=1)).strftime('%Y-%m-%d')
         response = self.client.post(reverse('orders:checkout'), {
             'full_name': 'Test', 'email': 'test@test.com', 'address_line1': '10 St', 'city': 'Bristol', 'postcode': 'BS1 1AA',
             'delivery_date': bad_date
         })
-        # Verifying failure logic returns back to checkout form and keeps active cart status rather than committing
         self.assertEqual(Cart.objects.filter(user=self.customer, status=Cart.STATUS_ACTIVE).exists(), True)
 
-        # Attempt checkout + 2 days (PASSES - Exactly 48 Hours)
         good_date = (self.today + timedelta(days=2)).strftime('%Y-%m-%d')
         response = self.client.post(reverse('orders:checkout'), {
             'full_name': 'Test', 'email': 'test@test.com', 'address_line1': '10 St', 'city': 'Bristol', 'postcode': 'BS1 1AA',
@@ -113,12 +102,9 @@ class TC009ProducerDashboardTests(TestCase):
         
         orders_context = list(response.context['orders'])
         
-        # Expecting exactly 3 orders (Order 1, Order 2, Order 3) - Order 4 shouldn't be here
         self.assertEqual(len(orders_context), 3)
         self.assertNotIn(self.order4, orders_context)
         
-        # Check that orders are sorted by delivery date ASCENDING (upcoming first)
-        # Order 2 (+3 days), Order 1 (+5 days), Order 3 (+7 days)
         self.assertEqual(orders_context[0], self.order2)
         self.assertEqual(orders_context[1], self.order1)
         self.assertEqual(orders_context[2], self.order3)
@@ -127,16 +113,13 @@ class TC009ProducerDashboardTests(TestCase):
         """Verifies that within a multi-vendor order, the producer only views their items."""
         self.client.login(username='producer1', password='Password123!')
         
-        # Inspect Order 2 (Multi-vendor order)
         response = self.client.get(reverse('orders:manage_order_detail', args=[self.order2.id]))
         self.assertEqual(response.status_code, 200)
 
-        # Producer 1 should only see 'Pears', NOT 'Bananas'
         items_context = list(response.context['items'])
         self.assertEqual(len(items_context), 1)
         self.assertEqual(items_context[0].product_name, 'Pears')
 
-        # However, they should see the full customer contact details
         self.assertContains(response, 'John Doe')
         self.assertContains(response, 'j@test.com')
         self.assertContains(response, '10 High St')
@@ -145,21 +128,18 @@ class TC009ProducerDashboardTests(TestCase):
         """Producer can update statuses correctly following the allowed state transitions through to Delivered"""
         self.client.login(username='producer1', password='Password123!')
         
-        # Change Pending -> Confirmed
         response = self.client.post(reverse('orders:manage_order_detail', args=[self.order1.id]), {
             'status': Order.STATUS_CONFIRMED
         })
         self.order1.refresh_from_db()
         self.assertEqual(self.order1.status, Order.STATUS_CONFIRMED)
 
-        # Change Confirmed -> Ready
         response = self.client.post(reverse('orders:manage_order_detail', args=[self.order1.id]), {
             'status': Order.STATUS_READY
         })
         self.order1.refresh_from_db()
         self.assertEqual(self.order1.status, Order.STATUS_READY)
 
-        # Change Ready -> Delivered
         response = self.client.post(reverse('orders:manage_order_detail', args=[self.order1.id]), {
             'status': Order.STATUS_DELIVERED
         })

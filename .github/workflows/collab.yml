@@ -5,9 +5,6 @@ on:
     branches: ['**']
 
 jobs:
-  # ──────────────────────────────────────────────
-  # Job 1: Build & validate the code on every push
-  # ──────────────────────────────────────────────
   build-and-validate:
     runs-on: ubuntu-latest
 

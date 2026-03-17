@@ -96,3 +96,20 @@
 - Implemented pagination (20 items per page) for product listings
 - API endpoints: GET /api/products/, GET /api/categories/
 - Provides JSON data for frontend JavaScript integration
+# V1.0.15 - Rob Howells
+- Added Terms page template
+- Added Terms page view in brfn_app/views.py
+- Added URL route for Terms page
+- Updated registration page to link to Terms page
+- Improved registration form styling in main.css
+- Tidied navigation/page flow for account signup
+# V1.0.16 - Zain Malik
+- Integrated Stripe Checkout test-mode payment flow into the orders app
+- Updated checkout to redirect to Stripe and handle success/cancel return pages
+- Added Stripe configuration to project settings, environment template, and docker-compose
+- Added a database seed command for sample categories, users, and products
+- Populated test data to support end to end checkout testing with sample items
+# V1.0.17 - Alex McBride
+- Added test cases 1-5
+# V1.0.18 - Sebastian Macfarlane Woodley
+- Added test cases 6-10

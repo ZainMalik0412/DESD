@@ -373,3 +373,7 @@ textarea {
         align-items: flex-start;
     }
 }
+
+input[type="checkbox"]{
+  margin: 0;
+}

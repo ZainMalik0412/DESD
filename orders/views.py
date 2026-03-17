@@ -1,6 +1,8 @@
+import stripe
 from collections import OrderedDict
 from decimal import Decimal
 from datetime import datetime, date, timedelta
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import Http404
@@ -134,6 +136,74 @@ def checkout(request):
             "commission": commission, "grand_total": grand_total,
         })
 
+    # Validate Delivery Date BEFORE sending to stripe
+    raw_delivery_date = request.POST.get("delivery_date", "").strip()
+    try:
+        parsed_date = datetime.strptime(raw_delivery_date, "%Y-%m-%d").date()
+        if parsed_date < date.today() + timedelta(days=2):
+            from django.contrib import messages
+            messages.error(request, "Delivery date must be at least 48 hours away.")
+            return redirect("orders:checkout")
+    except ValueError:
+        from django.contrib import messages
+        messages.error(request, "Invalid delivery date.")
+        return redirect("orders:checkout")
+
+    # Save delivery details to session before redirecting to Stripe
+    request.session["checkout_details"] = {
+        "full_name": request.POST.get("full_name", "").strip(),
+        "email": request.POST.get("email", "").strip(),
+        "address_line1": request.POST.get("address_line1", "").strip(),
+        "address_line2": request.POST.get("address_line2", "").strip(),
+        "city": request.POST.get("city", "").strip(),
+        "postcode": request.POST.get("postcode", "").strip(),
+        "delivery_date": raw_delivery_date,
+    }
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    line_items = []
+    for item in items:
+        line_items.append({
+            "price_data": {
+                "currency": "gbp",
+                "product_data": {"name": item.product.name},
+                "unit_amount": int(item.product.price * 100),
+            },
+            "quantity": item.quantity,
+        })
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=line_items,
+        mode="payment",
+        success_url=request.build_absolute_uri("/orders/checkout/success/") + "?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url=request.build_absolute_uri("/orders/checkout/cancel/"),
+    )
+
+    return redirect(session.url)
+
+
+@login_required
+def stripe_success(request):
+    session_id = request.GET.get("session_id")
+    if not session_id:
+        return redirect("orders:cart")
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    session = stripe.checkout.Session.retrieve(session_id)
+
+    if session.payment_status != "paid":
+        return redirect("orders:cart")
+
+    cart = _get_cart(request.user)
+    items = cart.items.select_related("product").all()
+
+    if not items.exists():
+        return redirect("orders:cart")
+
+    details = request.session.pop("checkout_details", {})
+
     with transaction.atomic():
         product_ids = [i.product_id for i in items]
         products = {p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids)}
@@ -145,29 +215,23 @@ def checkout(request):
             if hasattr(p, "stock") and p.stock < i.quantity:
                 return redirect("orders:cart")
 
-        # Validate Delivery Date (Minimum 48 Hours / 2 days)
-        raw_delivery_date = request.POST.get("delivery_date", "").strip()
+        raw_delivery_date = details.get("delivery_date", "")
         try:
             parsed_date = datetime.strptime(raw_delivery_date, "%Y-%m-%d").date()
-            if parsed_date < date.today() + timedelta(days=2):
-                from django.contrib import messages
-                messages.error(request, "Delivery date must be at least 48 hours away.")
-                return redirect("orders:checkout")
         except ValueError:
-            from django.contrib import messages
-            messages.error(request, "Invalid delivery date.")
-            return redirect("orders:checkout")
+            return redirect("orders:cart")
 
         order = Order.objects.create(
             user=request.user,
-            full_name=request.POST.get("full_name", "").strip(),
-            email=request.POST.get("email", "").strip(),
-            address_line1=request.POST.get("address_line1", "").strip(),
-            address_line2=request.POST.get("address_line2", "").strip(),
-            city=request.POST.get("city", "").strip(),
-            postcode=request.POST.get("postcode", "").strip(),
+            full_name=details.get("full_name", ""),
+            email=details.get("email", ""),
+            address_line1=details.get("address_line1", ""),
+            address_line2=details.get("address_line2", ""),
+            city=details.get("city", ""),
+            postcode=details.get("postcode", ""),
             total=Decimal("0.00"),
             delivery_date=parsed_date,
+            status=Order.STATUS_PAID,
         )
 
         total = Decimal("0.00")
@@ -202,6 +266,11 @@ def checkout(request):
         cart.items.all().delete()
 
     return redirect("orders:order_detail", order_id=order.id)
+
+
+@login_required
+def stripe_cancel(request):
+    return redirect("orders:checkout")
 
 
 @login_required

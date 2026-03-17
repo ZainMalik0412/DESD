@@ -78,10 +78,8 @@ class TC007SingleProducerCheckoutTests(TestCase):
         grouped = response.context['grouped_items']
 
         self.assertEqual(len(grouped), 1)
-        # 2*2.00 + 1*3.50 = 7.50
         self.assertEqual(grouped[0]['subtotal'], Decimal('7.50'))
 
-        # Commission = 5% of 7.50 = 0.375 rounded = 0.38
         self.assertEqual(response.context['commission'], Decimal('0.38'))
         self.assertEqual(response.context['grand_total'], Decimal('7.88'))
         self.assertContains(response, 'Network Commission (5%)')
@@ -96,7 +94,6 @@ class TC007SingleProducerCheckoutTests(TestCase):
             'address_line1': '5 Market St', 'city': 'Bristol', 'postcode': 'BS1 1AA',
             'delivery_date': bad_date,
         })
-        # Cart still active — order was not placed
         self.assertTrue(Cart.objects.filter(user=self.customer, status=Cart.STATUS_ACTIVE).exists())
         self.assertEqual(Order.objects.filter(user=self.customer).count(), 0)
 

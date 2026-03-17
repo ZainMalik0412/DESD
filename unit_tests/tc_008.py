@@ -19,7 +19,6 @@ class TC008MultiVendorCheckoutTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-        # Two producers
         self.producer1 = CustomUser.objects.create_user(
             username='bristol_valley_farm', email='bvf@test.com', password='Password123!',
             role=CustomUser.Role.PRODUCER, first_name='Bristol', last_name='Farm'
@@ -37,7 +36,6 @@ class TC008MultiVendorCheckoutTests(TestCase):
 
         self.category = Category.objects.create(name='Mixed', slug='mixed')
 
-        # Producer 1 products
         self.p1_prod_a = Product.objects.create(
             producer=self.producer1, category=self.category,
             name='Organic Carrots', price=Decimal('2.00'), stock_quantity=50
@@ -47,7 +45,6 @@ class TC008MultiVendorCheckoutTests(TestCase):
             name='Farm Eggs', price=Decimal('3.50'), stock_quantity=50
         )
 
-        # Producer 2 products
         self.p2_prod_a = Product.objects.create(
             producer=self.producer2, category=self.category,
             name='Fresh Milk', price=Decimal('1.50'), stock_quantity=50
@@ -79,13 +76,10 @@ class TC008MultiVendorCheckoutTests(TestCase):
         self.assertIn('bristol_valley_farm', producer_names)
         self.assertIn('hillside_dairy', producer_names)
 
-        # Check per-producer subtotals
         for group in grouped:
             if group['producer'].username == 'bristol_valley_farm':
-                # 2*2.00 + 1*3.50 = 7.50
                 self.assertEqual(group['subtotal'], Decimal('7.50'))
             elif group['producer'].username == 'hillside_dairy':
-                # 3*1.50 + 1*4.00 = 8.50
                 self.assertEqual(group['subtotal'], Decimal('8.50'))
 
     def test_checkout_shows_commission_and_grouped(self):
@@ -98,13 +92,9 @@ class TC008MultiVendorCheckoutTests(TestCase):
         grouped = response.context['grouped_items']
         self.assertEqual(len(grouped), 2)
 
-        # Total = 7.50 + 8.50 = 16.00
-        # Commission = 5% of 16.00 = 0.80
-        # Grand total = 16.80
         self.assertEqual(response.context['commission'], Decimal('0.80'))
         self.assertEqual(response.context['grand_total'], Decimal('16.80'))
 
-        # Template renders commission
         self.assertContains(response, 'Network Commission (5%)')
 
     def test_multi_vendor_order_created_with_commission(self):
@@ -119,15 +109,12 @@ class TC008MultiVendorCheckoutTests(TestCase):
             'delivery_date': delivery_date,
         })
 
-        # Single order created
         self.assertEqual(Order.objects.filter(user=self.customer).count(), 1)
         order = Order.objects.get(user=self.customer)
 
-        # Total = 16.00, Commission = 0.80
         self.assertEqual(order.total, Decimal('16.00'))
         self.assertEqual(order.commission, Decimal('0.80'))
 
-        # 4 OrderItems total
         self.assertEqual(order.items.count(), 4)
 
     def test_producer1_sees_only_their_items(self):
@@ -197,5 +184,4 @@ class TC008MultiVendorCheckoutTests(TestCase):
         grouped = response.context['grouped_items']
         self.assertEqual(len(grouped), 2)
 
-        # Commission is displayed
         self.assertContains(response, 'Network Commission (5%)')

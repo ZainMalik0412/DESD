@@ -104,7 +104,6 @@ class TC010OrderStatusUpdateTests(TestCase):
 
     def test_customer_sees_updated_status_and_history(self):
         """Customer order detail reflects the latest status and shows the status history timeline."""
-        # Producer updates status
         self.client.login(username='producer_tc10', password='Password123!')
         self.client.post(reverse('orders:manage_order_detail', args=[self.order.id]), {
             'status': Order.STATUS_CONFIRMED,
@@ -112,16 +111,12 @@ class TC010OrderStatusUpdateTests(TestCase):
         })
         self.client.logout()
 
-        # Customer views their order
         self.client.login(username='customer_tc10', password='Password123!')
         response = self.client.get(reverse('orders:order_detail', args=[self.order.id]))
         self.assertEqual(response.status_code, 200)
 
-        # Status is reflected
         self.assertContains(response, 'Confirmed')
-        # History is visible
         self.assertContains(response, 'Being prepared now')
-        # Status updates are in context
         self.assertEqual(len(response.context['status_updates']), 1)
 
     def test_only_relevant_producer_can_update(self):
@@ -139,7 +134,6 @@ class TC010OrderStatusUpdateTests(TestCase):
         """The manage_orders list view reflects the current status display."""
         self.client.login(username='producer_tc10', password='Password123!')
 
-        # Update to confirmed first
         self.client.post(reverse('orders:manage_order_detail', args=[self.order.id]), {
             'status': Order.STATUS_CONFIRMED,
         })
