@@ -20,7 +20,7 @@
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
                 {% else %}
-                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
                     <a href="/orders/my-orders/">My Orders</a>
                 {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
@@ -35,6 +35,16 @@
         </nav>
     </header>
 
+    {% if messages %}
+    <div style="max-width: 1200px; margin: 1rem auto; padding: 0 2rem;">
+        {% for message in messages %}
+        <div style="background:#d4edda; color:#155724; padding:0.75rem 1rem; text-align:center; border-radius:4px; margin-bottom:0.5rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="page-wide">
         <h2>Order #{{ order.id }}</h2>
 
@@ -43,6 +53,9 @@
                 <h3>Order Info</h3>
                 <p>Status: <strong>{{ order.get_status_display }}</strong></p>
                 <p>Placed: {{ order.created_at|date:"d M Y, H:i" }}</p>
+                {% if order.delivery_date %}
+                <p>Delivery Date: <strong>{{ order.delivery_date|date:"d M Y" }}</strong></p>
+                {% endif %}
                 <p class="price">Total: £{{ order.total }}</p>
             </div>
             <div class="product-card">
@@ -56,26 +69,57 @@
         </div>
 
         <h3>Items</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="border-bottom: 2px solid #ddd; text-align: left;">
-                    <th style="padding: 0.75rem;">Product</th>
-                    <th style="padding: 0.75rem;">Price</th>
-                    <th style="padding: 0.75rem;">Qty</th>
-                    <th style="padding: 0.75rem;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 0.75rem;">{{ item.product_name }}</td>
-                    <td style="padding: 0.75rem;">£{{ item.unit_price }}</td>
-                    <td style="padding: 0.75rem;">{{ item.quantity }}</td>
-                    <td style="padding: 0.75rem;"><strong>£{{ item.line_total }}</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% for group in grouped_items %}
+        <div style="margin-bottom: 1.5rem; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+            <div style="background: #f5f5f5; padding: 0.5rem 1rem; border-bottom: 1px solid #e0e0e0;">
+                <strong>{{ group.producer.username }}</strong>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #ddd; text-align: left;">
+                        <th style="padding: 0.75rem;">Product</th>
+                        <th style="padding: 0.75rem;">Price</th>
+                        <th style="padding: 0.75rem;">Qty</th>
+                        <th style="padding: 0.75rem;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in group.items %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 0.75rem;">{{ item.product_name }}</td>
+                        <td style="padding: 0.75rem;">£{{ item.unit_price }}</td>
+                        <td style="padding: 0.75rem;">{{ item.quantity }}</td>
+                        <td style="padding: 0.75rem;"><strong>£{{ item.line_total }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="text-align: right; padding: 0.5rem 1rem; background: #fafafa; border-top: 1px solid #e0e0e0;">
+                <strong>Subtotal: £{{ group.subtotal }}</strong>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if order.commission %}
+        <div style="text-align: right; margin-bottom: 1rem;">
+            <p>Products Total: £{{ order.total }}</p>
+            <p>Network Commission (5%): £{{ order.commission }}</p>
+        </div>
+        {% endif %}
+
+        {% if status_updates %}
+        <h3 style="margin-top: 2rem;">Status History</h3>
+        <div style="border-left: 3px solid #4a7c59; padding-left: 1.5rem; margin-bottom: 2rem;">
+            {% for update in status_updates %}
+            <div style="margin-bottom: 1.25rem; position: relative;">
+                <div style="position: absolute; left: -1.85rem; top: 0.3rem; width: 10px; height: 10px; background: #4a7c59; border-radius: 50%;"></div>
+                <p style="margin: 0; font-size: 0.85rem; color: #888;">{{ update.created_at|date:"d M Y, H:i" }}</p>
+                <p style="margin: 0.2rem 0 0;"><strong>{{ update.old_status|title }}</strong> → <strong>{{ update.new_status|title }}</strong></p>
+                {% if update.note %}<p style="margin: 0.2rem 0 0; color: #555; font-style: italic;">"{{ update.note }}"</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <p class="link" style="margin-top: 1.5rem;"><a href="/orders/my-orders/">← Back to My Orders</a></p>
     </div>

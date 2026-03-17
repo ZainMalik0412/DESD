@@ -18,7 +18,7 @@
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
                 {% else %}
-                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
                     <a href="/orders/my-orders/">My Orders</a>
                 {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
@@ -32,6 +32,16 @@
             {% endif %}
         </nav>
     </header>
+
+    {% if messages %}
+    <div style="max-width: 1200px; margin: 1rem auto; padding: 0 2rem;">
+        {% for message in messages %}
+        <div style="background:#d4edda; color:#155724; padding:0.75rem 1rem; text-align:center; border-radius:4px; margin-bottom:0.5rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="page page-wide">
         <h2>Our Producers</h2>

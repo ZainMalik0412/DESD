@@ -111,10 +111,10 @@ def validate_status_transition(current_status, new_status):
     Validate allowed order status transitions.
     
     Allowed transitions:
-    - pending → accepted, cancelled
-    - placed → paid, cancelled
-    - paid → fulfilled, cancelled
-    - fulfilled → (terminal state, no transitions)
+    - pending → confirmed, cancelled
+    - confirmed → ready, cancelled
+    - ready → delivered, cancelled
+    - delivered → (terminal state, no transitions)
     - cancelled → (terminal state, no transitions)
     
     Args:
@@ -129,9 +129,10 @@ def validate_status_transition(current_status, new_status):
     """
     # Define allowed transitions
     allowed_transitions = {
-        'placed': ['paid', 'cancelled'],
-        'paid': ['fulfilled', 'cancelled'],
-        'fulfilled': [],  # Terminal state
+        'pending': ['confirmed', 'cancelled'],
+        'confirmed': ['ready', 'cancelled'],
+        'ready': ['delivered', 'cancelled'],
+        'delivered': [],  # Terminal state
         'cancelled': [],  # Terminal state
     }
     
@@ -139,8 +140,8 @@ def validate_status_transition(current_status, new_status):
     if current_status not in allowed_transitions:
         raise ValidationError(f"Invalid current status: '{current_status}'")
     
-    # Check if transition is allowed
-    if new_status not in allowed_transitions.get(current_status, []):
+    # Check if transition is allowed (or if we are just submitting the same status again)
+    if new_status != current_status and new_status not in allowed_transitions.get(current_status, []):
         raise ValidationError(
             f"Cannot transition from '{current_status}' to '{new_status}'. "
             f"Allowed transitions: {', '.join(allowed_transitions[current_status]) or 'none (terminal state)'}"

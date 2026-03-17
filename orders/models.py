@@ -46,21 +46,23 @@ class CartItem(models.Model):
 
 
 class Order(models.Model):
-    STATUS_PLACED = "placed"
-    STATUS_PAID = "paid"
-    STATUS_CANCELLED = "cancelled"
-    STATUS_FULFILLED = "fulfilled"
+    STATUS_PENDING = "pending"
+    STATUS_CONFIRMED = "confirmed"
+    STATUS_READY = "ready"
+    STATUS_DELIVERED = "delivered"
 
     STATUS_CHOICES = [
-        (STATUS_PLACED, "Placed"),
-        (STATUS_PAID, "Paid"),
-        (STATUS_CANCELLED, "Cancelled"),
-        (STATUS_FULFILLED, "Fulfilled"),
+        (STATUS_PENDING, "Pending"),
+        (STATUS_CONFIRMED, "Confirmed"),
+        (STATUS_READY, "Ready"),
+        (STATUS_DELIVERED, "Delivered"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PLACED)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    delivery_date = models.DateField(null=True)
+    commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     full_name = models.CharField(max_length=120)
     email = models.EmailField()
@@ -72,6 +74,13 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    COMMISSION_RATE = Decimal("0.05")  # 5% network commission
+
+    @property
+    def producer_payment(self):
+        """Amount paid to producers (95% of total)."""
+        return self.total - self.commission
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
@@ -81,3 +90,19 @@ class OrderItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
     line_total = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class StatusUpdate(models.Model):
+    """Audit trail for order status changes."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="status_updates")
+    old_status = models.CharField(max_length=20)
+    new_status = models.CharField(max_length=20)
+    note = models.TextField(blank=True, default="")
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Order #{self.order_id}: {self.old_status} → {self.new_status}"

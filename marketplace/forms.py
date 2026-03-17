@@ -202,9 +202,10 @@ class OrderStatusForm(forms.Form):
     """
     
     STATUS_CHOICES = [
-        ('placed', 'Placed'),
-        ('paid', 'Paid'),
-        ('fulfilled', 'Fulfilled'),
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('ready', 'Ready for Collection'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
     
@@ -214,6 +215,16 @@ class OrderStatusForm(forms.Form):
             'class': 'form-control',
         }),
         help_text="Update order status"
+    )
+
+    note = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Optional note, e.g. Products will be prepared by delivery date...',
+        }),
+        help_text="Optional note for the customer"
     )
     
     def __init__(self, *args, current_status=None, **kwargs):
@@ -231,7 +242,7 @@ class OrderStatusForm(forms.Form):
             allowed_next_statuses = self._get_allowed_statuses(current_status)
             self.fields['status'].choices = [
                 (value, label) for value, label in self.STATUS_CHOICES
-                if value in allowed_next_statuses
+                if value in allowed_next_statuses or value == current_status
             ]
     
     def _get_allowed_statuses(self, current_status):
@@ -245,9 +256,10 @@ class OrderStatusForm(forms.Form):
             list: Allowed next statuses
         """
         allowed_transitions = {
-            'placed': ['paid', 'cancelled'],
-            'paid': ['fulfilled', 'cancelled'],
-            'fulfilled': [],  # Terminal state
+            'pending': ['confirmed', 'cancelled'],
+            'confirmed': ['ready', 'cancelled'],
+            'ready': ['delivered', 'cancelled'],
+            'delivered': [],  # Terminal state
             'cancelled': [],  # Terminal state
         }
         

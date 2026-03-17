@@ -20,7 +20,7 @@
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
                 {% else %}
-                    <a href="/orders/cart/">Cart</a>
+                    <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
                     <a href="/orders/my-orders/">My Orders</a>
                 {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
@@ -35,20 +35,52 @@
         </nav>
     </header>
 
+    {% if messages %}
+    <div style="max-width: 1200px; margin: 1rem auto; padding: 0 2rem;">
+        {% for message in messages %}
+        <div style="background:#d4edda; color:#155724; padding:0.75rem 1rem; text-align:center; border-radius:4px; margin-bottom:0.5rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="page page-form">
         <h2>Checkout</h2>
 
         <h3>Order Summary</h3>
+        {% for group in grouped_items %}
+        <div style="margin-bottom: 1rem; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+            <div style="background: #f5f5f5; padding: 0.5rem 1rem; border-bottom: 1px solid #e0e0e0;">
+                <strong>{{ group.producer.username }}</strong>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                {% for item in group.items %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.5rem 1rem;">{{ item.product.name }} × {{ item.quantity }}</td>
+                    <td style="padding: 0.5rem 1rem; text-align: right;">£{{ item.line_total }}</td>
+                </tr>
+                {% endfor %}
+                <tr style="background: #fafafa;">
+                    <td style="padding: 0.5rem 1rem;"><strong>Producer Subtotal</strong></td>
+                    <td style="padding: 0.5rem 1rem; text-align: right;"><strong>£{{ group.subtotal }}</strong></td>
+                </tr>
+            </table>
+        </div>
+        {% endfor %}
+
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-            {% for item in items %}
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 0.5rem 0;">{{ item.product.name }} × {{ item.quantity }}</td>
-                <td style="padding: 0.5rem 0; text-align: right;">£{{ item.line_total }}</td>
+            <tr>
+                <td style="padding: 0.5rem 0;">Products Total</td>
+                <td style="padding: 0.5rem 0; text-align: right;">£{{ cart.total }}</td>
             </tr>
-            {% endfor %}
+            <tr>
+                <td style="padding: 0.5rem 0;">Network Commission (5%)</td>
+                <td style="padding: 0.5rem 0; text-align: right;">£{{ commission }}</td>
+            </tr>
             <tr style="border-top: 2px solid #333;">
-                <td style="padding: 0.75rem 0;"><strong>Total</strong></td>
-                <td style="padding: 0.75rem 0; text-align: right;"><strong>£{{ cart.total }}</strong></td>
+                <td style="padding: 0.75rem 0;"><strong>Grand Total</strong></td>
+                <td style="padding: 0.75rem 0; text-align: right;"><strong>£{{ grand_total }}</strong></td>
             </tr>
         </table>
 
@@ -80,10 +112,30 @@
                 <label for="postcode">Postcode</label>
                 <input type="text" id="postcode" name="postcode" value="{{ user.postcode }}" required>
             </div>
+            <div class="form-group">
+                <label for="delivery_date">Delivery Date (Min. 48 hours notice)</label>
+                <input type="date" id="delivery_date" name="delivery_date" required>
+            </div>
             <button type="submit">Place Order</button>
         </form>
         <p class="link"><a href="/orders/cart/">← Back to cart</a></p>
     </div>
+
+    <script>
+        // Set the minimum delivery date to 48 hours (2 days) from today
+        document.addEventListener('DOMContentLoaded', function() {
+            var dateInput = document.getElementById('delivery_date');
+            var today = new Date();
+            today.setDate(today.getDate() + 2); // Add exactly 48 hours conceptually
+            
+            // Format to YYYY-MM-DD
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var yyyy = today.getFullYear();
+            
+            dateInput.min = yyyy + '-' + mm + '-' + dd;
+        });
+    </script>
 
     <footer>&copy; 2026 Bristol Regional Food Network</footer>
 </body>

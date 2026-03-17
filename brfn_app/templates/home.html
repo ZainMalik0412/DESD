@@ -22,7 +22,7 @@
             <a href="/browse/my-products/">My Products</a>
             <a href="/orders/manage/">Manage Orders</a>
             {% else %}
-            <a href="/orders/cart/">Cart</a>
+            <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
             <a href="/orders/my-orders/">My Orders</a>
             {% endif %}
             <div class="user-menu" onclick="this.classList.toggle('open')">
