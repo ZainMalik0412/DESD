@@ -113,3 +113,5 @@
 - Added test cases 1-5
 # V1.0.18 - Sebastian Macfarlane Woodley
 - Added test cases 6-10
+# V1.0.19 - Rob Howells
+- Added test cases 11-15
