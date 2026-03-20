@@ -63,7 +63,7 @@ class ProductForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['organic_certification_status'].required = True
+        self.fields['organic_certification_status'].required = False
         self.fields['organic_certification_status'].label = 'Organic Certification'
         self.fields['organic_certification_status'].help_text = 'Select whether this product is Certified Organic or Not Certified.'
 
@@ -108,7 +108,13 @@ class ProductForm(forms.ModelForm):
                 validate_product_data(price, stock_quantity)
             except ValidationError as e:
                 raise e
+        organic_status = cleaned_data.get('organic_certification_status')
 
+        if not organic_status:
+            if self.instance and self.instance.pk:
+                cleaned_data['organic_certification_status'] = self.instance.organic_certification_status
+            else:
+                cleaned_data['organic_certification_status'] = Product.OrganicCertificationStatus.NOT_CERTIFIED
         return cleaned_data
 
 
