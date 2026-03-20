@@ -52,12 +52,20 @@
         <form method="get" class="filters">
             <input type="text" name="search" placeholder="Search for a product, e.g. Apple, Bread, Milk..."
                 value="{{ search }}">
+
             <select name="category" onchange="this.form.submit()">
                 <option value="">All Categories</option>
                 {% for cat in categories %}
                 <option value="{{ cat.slug }}" {% if cat.is_selected %}selected{% endif %}>{{ cat.name }}</option>
                 {% endfor %}
             </select>
+
+            <select name="allergen_filter">
+                <option value="">All Products</option>
+                <option value="has_allergens" {% if allergen_filter == 'has_allergens' %}selected{% endif %}>Has Allergens</option>
+                <option value="no_allergens" {% if allergen_filter == 'no_allergens' %}selected{% endif %}>No Allergens</option>
+            </select>
+
             <button type="submit">Search</button>
         </form>
 
@@ -69,6 +77,16 @@
         {% elif producer_name %}
         <p class="search-summary">
             Showing products from producer: <strong>{{ producer_name }}</strong> -
+            {{ products|length }} product{{ products|length|pluralize }} found
+        </p>
+        {% elif allergen_filter == 'has_allergens' %}
+        <p class="search-summary">
+            Showing products with allergen information -
+            {{ products|length }} product{{ products|length|pluralize }} found
+        </p>
+        {% elif allergen_filter == 'no_allergens' %}
+        <p class="search-summary">
+            Showing products with no allergen information -
             {{ products|length }} product{{ products|length|pluralize }} found
         </p>
         {% endif %}
@@ -88,11 +106,23 @@
                     {{ product.get_seasonal_status_display }}
                 </span>
                 <p class="price">£{{ product.price }} / {{ product.unit }}</p>
-                {% if product.allergen_info %}
-                <p style="font-size: 0.75rem; color: #e65100; margin-top: 0.3rem;">
-                    Alergen information: {{ product.allergen_info }}
+
+                {% if product.food_miles is not None %}
+                <p style="font-size: 0.75rem; color: #1565c0; margin-top: 0.3rem;">
+                    Food miles: {{ product.food_miles }} miles
                 </p>
                 {% endif %}
+
+                {% if product.allergen_info %}
+                <p style="font-size: 0.75rem; color: #e65100; margin-top: 0.3rem;">
+                    Allergen information: {{ product.allergen_info }}
+                </p>
+                {% else %}
+                <p style="font-size: 0.75rem; color: #2e7d32; margin-top: 0.3rem;">
+                    Allergen information: No common allergens
+                </p>
+                {% endif %}
+
                 {% if user.is_authenticated %}
                 <form method="post" action="/orders/cart/add/{{ product.id }}/" style="margin-top: 0.5rem;">
                     {% csrf_token %}

@@ -1,7 +1,10 @@
+import math
+import re
 import stripe
 from collections import OrderedDict
 from decimal import Decimal
 from datetime import datetime, date, timedelta
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -10,6 +13,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from marketplace.models import Product
 from .models import Cart, CartItem, Order, OrderItem, StatusUpdate
+
+
+POSTCODE_COORDS = {
+    'BS1': (51.4545, -2.5879),
+    'BA1': (51.3811, -2.3590),
+    'EX1': (50.7260, -3.5270),
+}
 
 
 def _is_customer(user):
@@ -22,8 +32,88 @@ def _get_cart(user):
     return cart
 
 
+def _get_outward_code(postcode):
+    if not postcode:
+        return None
+
+    postcode = postcode.strip().upper()
+    match = re.match(r'^([A-Z]{1,2}\d[A-Z\d]?)', postcode)
+    if match:
+        return match.group(1)
+
+    parts = postcode.split()
+    return parts[0] if parts else None
+
+
+def _get_coords_from_postcode(postcode):
+    outward = _get_outward_code(postcode)
+    if not outward:
+        return None
+    return POSTCODE_COORDS.get(outward)
+
+
+def _haversine_miles(lat1, lon1, lat2, lon2):
+    radius_miles = 3958.8
+
+    lat1 = math.radians(lat1)
+    lon1 = math.radians(lon1)
+    lat2 = math.radians(lat2)
+    lon2 = math.radians(lon2)
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.asin(math.sqrt(a))
+    return radius_miles * c
+
+
+def _get_customer_postcode(user):
+    if not getattr(user, "is_authenticated", False):
+        return None
+    if not _is_customer(user):
+        return None
+    return getattr(user, "postcode", None)
+
+
+def calculate_food_miles(origin, destination):
+    if not origin or not destination:
+        return None
+
+    origin_coords = _get_coords_from_postcode(origin)
+    destination_coords = _get_coords_from_postcode(destination)
+
+    if origin_coords and destination_coords:
+        miles = _haversine_miles(
+            origin_coords[0],
+            origin_coords[1],
+            destination_coords[0],
+            destination_coords[1],
+        )
+        return round(miles, 1)
+
+    origin_outward = _get_outward_code(origin)
+    destination_outward = _get_outward_code(destination)
+
+    if not origin_outward or not destination_outward:
+        return None
+
+    if origin_outward == destination_outward:
+        return 1.0
+
+    origin_area = re.match(r'^[A-Z]+', origin_outward)
+    destination_area = re.match(r'^[A-Z]+', destination_outward)
+
+    if origin_area and destination_area and origin_area.group(0) == destination_area.group(0):
+        return 15.0
+
+    return 60.0
+
+
 def _group_cart_items_by_producer(items):
-    """Group CartItems by their product's producer, computing per-producer subtotals."""
     grouped = OrderedDict()
     for item in items:
         producer = item.product.producer
@@ -35,7 +125,6 @@ def _group_cart_items_by_producer(items):
 
 
 def _group_order_items_by_producer(items):
-    """Group OrderItems by their product's producer, computing per-producer subtotals."""
     grouped = OrderedDict()
     for item in items:
         producer = item.product.producer if item.product else None
@@ -50,9 +139,34 @@ def _group_order_items_by_producer(items):
 @login_required
 def cart_detail(request):
     cart = _get_cart(request.user)
-    items = cart.items.select_related("product", "product__producer").all()
+    items = list(cart.items.select_related("product", "product__producer").all())
+
+    item_food_miles = {}
+    total_food_miles = 0.0
+
+    for item in items:
+        item.food_miles = None
+
+        customer_postcode = getattr(request.user, "postcode", None)
+        producer_postcode = getattr(item.product.producer, "postcode", None)
+
+        if customer_postcode and producer_postcode:
+            miles = calculate_food_miles(producer_postcode, customer_postcode)
+            if miles is not None:
+                miles = round(miles, 1)
+                item.food_miles = miles
+                item_food_miles[item.product.id] = miles
+                total_food_miles += miles
+
     grouped_items = _group_cart_items_by_producer(items)
-    return render(request, "orders/cart.html", {"cart": cart, "items": items, "grouped_items": grouped_items})
+
+    return render(request, "orders/cart.html", {
+        "cart": cart,
+        "items": items,
+        "grouped_items": grouped_items,
+        "item_food_miles": item_food_miles,
+        "total_food_miles": round(total_food_miles, 1),
+    })
 
 
 @login_required
@@ -132,11 +246,13 @@ def checkout(request):
 
     if request.method == "GET":
         return render(request, "orders/checkout.html", {
-            "cart": cart, "items": items, "grouped_items": grouped_items,
-            "commission": commission, "grand_total": grand_total,
+            "cart": cart,
+            "items": items,
+            "grouped_items": grouped_items,
+            "commission": commission,
+            "grand_total": grand_total,
         })
 
-    # Validate Delivery Date BEFORE sending to stripe
     raw_delivery_date = request.POST.get("delivery_date", "").strip()
     try:
         parsed_date = datetime.strptime(raw_delivery_date, "%Y-%m-%d").date()
@@ -149,7 +265,6 @@ def checkout(request):
         messages.error(request, "Invalid delivery date.")
         return redirect("orders:checkout")
 
-    # Save delivery details to session before redirecting to Stripe
     request.session["checkout_details"] = {
         "full_name": request.POST.get("full_name", "").strip(),
         "email": request.POST.get("email", "").strip(),
@@ -290,7 +405,10 @@ def order_detail(request, order_id):
     grouped_items = _group_order_items_by_producer(items)
     status_updates = order.status_updates.all()
     return render(request, "orders/order_detail.html", {
-        "order": order, "items": items, "grouped_items": grouped_items, "status_updates": status_updates,
+        "order": order,
+        "items": items,
+        "grouped_items": grouped_items,
+        "status_updates": status_updates,
     })
 
 
@@ -302,7 +420,6 @@ def _is_producer(user):
 def manage_orders(request):
     if not _is_producer(request.user):
         raise Http404
-    # Show orders that contain items from this producer, sorted by upcoming delivery
     orders = Order.objects.filter(items__product__producer=request.user).distinct().order_by("delivery_date", "-created_at")
     return render(request, "orders/manage_orders.html", {"orders": orders})
 
@@ -311,14 +428,14 @@ def manage_orders(request):
 def manage_order_detail(request, order_id):
     if not _is_producer(request.user):
         raise Http404
-    
-    # Must contain at least one item from this producer
+
     try:
         order = Order.objects.filter(id=order_id, items__product__producer=request.user).distinct().get()
     except Order.DoesNotExist:
         raise Http404
+
     items = order.items.filter(product__producer=request.user)
-    
+
     from marketplace.forms import OrderStatusForm
     if request.method == "POST":
         form = OrderStatusForm(request.POST, current_status=order.status)

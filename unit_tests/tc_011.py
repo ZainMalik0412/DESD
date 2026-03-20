@@ -51,7 +51,7 @@ class TC011InventoryUpdateTests(TestCase):
             stock_quantity=20,
             is_available=True,
             seasonal_status=Product.SeasonalStatus.ALL_YEAR,
-            allergen_info='',
+            allergen_info='No common allergens',
             harvest_date=None,
         )
 
@@ -65,7 +65,7 @@ class TC011InventoryUpdateTests(TestCase):
             stock_quantity=0,
             is_available=False,
             seasonal_status=Product.SeasonalStatus.OUT_OF_SEASON,
-            allergen_info='',
+            allergen_info='No common allergens',
             harvest_date=None,
         )
 
@@ -79,7 +79,7 @@ class TC011InventoryUpdateTests(TestCase):
             stock_quantity=15,
             is_available=True,
             seasonal_status=Product.SeasonalStatus.IN_SEASON,
-            allergen_info='',
+            allergen_info='No common allergens',
             harvest_date=None,
         )
 
@@ -98,7 +98,7 @@ class TC011InventoryUpdateTests(TestCase):
             'unit': product.unit,
             'stock_quantity': product.stock_quantity,
             'seasonal_status': product.seasonal_status,
-            'allergen_info': product.allergen_info,
+            'allergen_info': product.allergen_info or 'No common allergens',
             'harvest_date': product.harvest_date.isoformat() if product.harvest_date else '',
         }
 

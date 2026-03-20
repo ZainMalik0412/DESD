@@ -115,7 +115,20 @@
 - Added test cases 6-10
 # V1.0.19 - Rob Howells
 - Added test cases 11-15
-# V1.0.20 - TJ
+# V 1.0.20 - Rob Howells
+- Updated product edit/update flow so producer stock and availability changes save correctly
+- Fixed inventory update behaviour so unavailable products are hidden from browse and reappear when made available again
+- Improved product form validation for stock updates and allergen information
+- Updated browse search to also match allergen information
+- Added allergen filter to browse page with options for all products/has allergens/no allergens
+- Added allergen information on display browse cards
+- Added clearer allergen warning/no common allergens display on product detail pages
+- Added food miles calculation to browse page for logged-in customers with postcode data
+- Added food miles display to product detail pages
+- Added food miles display per cart item and total food miles summary in cart
+- Updated cart view context to support food miles data used by TC-013 tests
+- Confirmed TC-011, TC-013 and TC-015 now passing
+# V1.0.21 - TJ
 - Created REST API endpoints for shopping cart operations
 - Added orders/api/serializers.py with CartSerializer, CartItemSerializer, OrderSerializer
 - Added orders/api/views.py with CartViewSet and OrderViewSet
@@ -125,3 +138,5 @@
 - API uses same Cart/CartItem models as HTML views, ensuring data consistency
 - All cart API endpoints require authentication
 - Provides JSON interface for frontend JavaScript and mobile app integration
+
+

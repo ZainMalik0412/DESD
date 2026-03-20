@@ -61,6 +61,7 @@
                         <th style="padding: 0.75rem;">Product</th>
                         <th style="padding: 0.75rem;">Price</th>
                         <th style="padding: 0.75rem;">Quantity</th>
+                        <th style="padding: 0.75rem;">Food Miles</th>
                         <th style="padding: 0.75rem;">Total</th>
                         <th style="padding: 0.75rem;"></th>
                     </tr>
@@ -82,6 +83,13 @@
                                     style="width: auto; padding: 0.3rem 0.6rem; font-size: 0.85rem;">Update</button>
                             </form>
                         </td>
+                        <td style="padding: 0.75rem;">
+                            {% if item.food_miles is not None %}
+                                {{ item.food_miles }} miles
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                         <td style="padding: 0.75rem;"><strong>£{{ item.line_total }}</strong></td>
                         <td style="padding: 0.75rem;">
                             <form method="post" action="/orders/cart/remove/{{ item.id }}/">
@@ -101,6 +109,7 @@
         {% endfor %}
 
         <div style="text-align: right; margin-bottom: 1.5rem;">
+            <p style="font-size: 1rem; color: #1565c0;"><strong>Total Food Miles: {{ total_food_miles }} miles</strong></p>
             <p style="font-size: 1.2rem;"><strong>Total: £{{ cart.total }}</strong></p>
             <a href="/orders/checkout/" class="btn">Proceed to Checkout</a>
         </div>

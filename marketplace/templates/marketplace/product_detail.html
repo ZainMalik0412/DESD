@@ -77,10 +77,22 @@
                 {% endif %}
             </p>
 
+            {% if food_miles is not None %}
+            <div
+                style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #eef6ff; border-radius: 4px; font-size: 0.85rem;">
+                <strong>Food miles:</strong> {{ food_miles }} miles
+            </div>
+            {% endif %}
+
             {% if product.allergen_info %}
             <div
                 style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fff3e0; border-radius: 4px; font-size: 0.85rem;">
-                <strong>Alergen information:</strong> {{ product.allergen_info }}
+                <strong>Allergen information:</strong> {{ product.allergen_info }}
+            </div>
+            {% else %}
+            <div
+                style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #e8f5e9; border-radius: 4px; font-size: 0.85rem;">
+                <strong>Allergen information:</strong> No common allergens
             </div>
             {% endif %}
 
