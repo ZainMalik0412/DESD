@@ -115,3 +115,13 @@
 - Added test cases 6-10
 # V1.0.19 - Rob Howells
 - Added test cases 11-15
+# V1.0.20 - TJ
+- Created REST API endpoints for shopping cart operations
+- Added orders/api/serializers.py with CartSerializer, CartItemSerializer, OrderSerializer
+- Added orders/api/views.py with CartViewSet and OrderViewSet
+- Added orders/api/urls.py with API routing
+- Integrated cart API into main project URLs at /api/cart/ and /api/orders/
+- API endpoints: GET/POST /api/cart/, POST /api/cart/add_item/, PATCH /api/cart/update_item/{id}/, DELETE /api/cart/remove_item/{id}/, POST /api/cart/clear/
+- API uses same Cart/CartItem models as HTML views, ensuring data consistency
+- All cart API endpoints require authentication
+- Provides JSON interface for frontend JavaScript and mobile app integration
