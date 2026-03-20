@@ -128,7 +128,17 @@
 - Added food miles display per cart item and total food miles summary in cart
 - Updated cart view context to support food miles data used by TC-013 tests
 - Confirmed TC-011, TC-013 and TC-015 now passing
-# V1.0.21 - Rob Howells
+# V1.0.21 - TJ
+- Created REST API endpoints for shopping cart operations
+- Added orders/api/serializers.py with CartSerializer, CartItemSerializer, OrderSerializer
+- Added orders/api/views.py with CartViewSet and OrderViewSet
+- Added orders/api/urls.py with API routing
+- Integrated cart API into main project URLs at /api/cart/ and /api/orders/
+- API endpoints: GET/POST /api/cart/, POST /api/cart/add_item/, PATCH /api/cart/update_item/{id}/, DELETE /api/cart/remove_item/{id}/, POST /api/cart/clear/
+- API uses same Cart/CartItem models as HTML views, ensuring data consistency
+- All cart API endpoints require authentication
+- Provides JSON interface for frontend JavaScript and mobile app integration
+# V1.0.22 - Rob Howells
 - Added organic certification status to products
 - Let producers set organic certification when creating/editing listings
 - Added organic certification filter on browse page
