@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from marketplace.models import Product
 from .models import Cart, CartItem, Order, OrderItem, StatusUpdate
+from .notifications import send_order_confirmation_email, send_status_update_email
 
 
 POSTCODE_COORDS = {
@@ -346,7 +347,7 @@ def stripe_success(request):
             postcode=details.get("postcode", ""),
             total=Decimal("0.00"),
             delivery_date=parsed_date,
-            status=Order.STATUS_PAID,
+            status=Order.STATUS_CONFIRMED,
         )
 
         total = Decimal("0.00")
@@ -379,6 +380,8 @@ def stripe_success(request):
         cart.status = Cart.STATUS_CONVERTED
         cart.save(update_fields=["status"])
         cart.items.all().delete()
+
+    send_order_confirmation_email(order)
 
     return redirect("orders:order_detail", order_id=order.id)
 
@@ -455,6 +458,8 @@ def manage_order_detail(request, order_id):
                     note=note,
                     changed_by=request.user,
                 )
+
+                send_status_update_email(order, old_status, new_status, note)
 
                 from django.contrib import messages
                 messages.success(request, f"Order status updated to {order.get_status_display()}.")

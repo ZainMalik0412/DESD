@@ -11,6 +11,9 @@ echo "MySQL is ready."
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
+echo "Seeding demo database..."
+python manage.py seed_database
+
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
