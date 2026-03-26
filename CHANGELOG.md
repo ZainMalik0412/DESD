@@ -156,7 +156,6 @@
 - Status update email sent to customer when producer changes order status
 - Added email configuration to settings.py with console backend (development) and Gmail SMTP (production)
 - Updated .env.example and docker-compose.yml with email environment variables
-- Added .env to .gitignore to prevent credential leaks
 # V1.0.25 - Rob Howells
 - Added producer Payments page
 - Added downloadable CSV payment report
@@ -167,7 +166,12 @@
 - Added Payments link to producer navigation
 - Merged email notification changes with existing orders/views.py work
 - Kept order confirmation and status update email functions in place
-# V1.0.26 - Alex McBride
+# V1.0.26 - Zain Malik
+- Added dedicated run-tests job to collab.yml CI/CD pipeline
+- Pipeline now runs all 15 unit tests as a separate jobs
+- Merge to main is now gated on test cases passing — code only merges if all tests succeed
+- Restructured pipeline flow: build-and-validate → run-tests → merge-to-main
+# V1.0.27 - Alex McBride
 - Fixed missing image validators - added file extension, size (5MB max), and content-type validation to Product.image field
 - Fixed email injection vulnerability - sanitised all user input in email notifications to prevent header injection attacks
 - Fixed CSV injection vulnerability - sanitised CSV export data to prevent formula execution in Excel
