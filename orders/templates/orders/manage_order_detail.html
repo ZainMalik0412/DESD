@@ -19,6 +19,7 @@
                 {% if user.role == 'producer' %}
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
+                    <a href="/orders/stock-alerts/">Stock Alerts</a>
                     <a href="/orders/payments/">Payments</a>
                 {% else %}
                     <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
@@ -70,6 +71,11 @@
             <div class="product-card" style="background: #fff;">
                 <h3>Update Status</h3>
                 <p style="margin-bottom: 1rem;">Current Status: <strong>{{ order.get_status_display }}</strong></p>
+                
+                <div style="background: #e8f5e9; border-left: 4px solid #4a7c59; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                    <strong>Status Flow:</strong><br>
+                    Pending → Confirmed → Ready for Collection → <strong style="color: #4a7c59;">Delivered</strong>
+                </div>
 
                 <form method="post" class="form-group" style="margin-bottom: 0;">
                     {% csrf_token %}
@@ -78,6 +84,15 @@
                         {{ form.status }}
                         {% if form.status.errors %}<div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
                             {{ form.status.errors.0 }}</div>{% endif %}
+                        {% if order.status == 'confirmed' %}
+                        <p style="margin-top: 0.25rem; font-size: 0.85rem; color: #666;">
+                            <em>Tip: Mark as "Ready for Collection" when items are prepared, then mark as "Delivered" after customer receives them.</em>
+                        </p>
+                        {% elif order.status == 'ready' %}
+                        <p style="margin-top: 0.25rem; font-size: 0.85rem; color: #4a7c59; font-weight: bold;">
+                            ✓ You can now mark this order as "Delivered"
+                        </p>
+                        {% endif %}
                     </div>
                     <div style="margin-bottom: 1rem;">
                         <label for="{{ form.note.id_for_label }}">Note (optional)</label>

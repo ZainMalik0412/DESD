@@ -50,6 +50,10 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.ITEM)
     stock_quantity = models.PositiveIntegerField(default=0)
+    low_stock_threshold = models.PositiveIntegerField(
+        default=10,
+        help_text="Alert when stock falls below this level"
+    )
     is_available = models.BooleanField(default=True)
     seasonal_status = models.CharField(
         max_length=20,
@@ -307,3 +311,33 @@ class FavoriteRecipe(models.Model):
     
     def __str__(self):
         return f"{self.user.username} saved {self.recipe.title}"
+
+
+class StockAlert(models.Model):
+    """Notifications for low stock levels."""
+    
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        RESOLVED = "resolved", "Resolved"
+        DISMISSED = "dismissed", "Dismissed"
+    
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_alerts")
+    producer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stock_alerts")
+    
+    stock_level = models.PositiveIntegerField(help_text="Stock level when alert was generated")
+    threshold = models.PositiveIntegerField(help_text="Threshold that triggered the alert")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ["-created_at"]
+    
+    def __str__(self):
+        return f"Low Stock Alert: {self.product.name} - {self.stock_level} {self.product.unit} remaining"
+    
+    @property
+    def is_active(self):
+        return self.status == self.Status.ACTIVE

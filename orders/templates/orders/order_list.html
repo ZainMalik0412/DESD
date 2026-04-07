@@ -57,6 +57,10 @@
                 <div>
                     <h3>Order #{{ order.id }}</h3>
                     <p>Placed: {{ order.created_at|date:"d M Y, H:i" }}</p>
+                    {% if order.delivery_date %}
+                    <p>Delivery: {{ order.delivery_date|date:"d M Y" }}</p>
+                    {% endif %}
+                    <p>Producers: {{ order.producer_names }}</p>
                     <p>Status: <strong>{{ order.get_status_display }}</strong></p>
                 </div>
                 <div style="text-align: right;">

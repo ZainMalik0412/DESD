@@ -29,6 +29,7 @@ class ProductForm(forms.ModelForm):
             'price',
             'unit',
             'stock_quantity',
+            'low_stock_threshold',
             'category',
             'is_available',
             'seasonal_status',
@@ -51,6 +52,10 @@ class ProductForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': '0'
             }),
+            'low_stock_threshold': forms.NumberInput(attrs={
+                'min': '0',
+                'placeholder': '10'
+            }),
             'organic_certification_status': forms.Select(),
             'allergen_info': forms.Textarea(attrs={
                 'rows': 2,
@@ -70,6 +75,10 @@ class ProductForm(forms.ModelForm):
 
         self.fields['allergen_info'].required = True
         self.fields['allergen_info'].help_text = 'List any allergens contained in this product, or state no common allergens.'
+        
+        # Make low_stock_threshold optional since it has a default value
+        self.fields['low_stock_threshold'].required = False
+        self.fields['low_stock_threshold'].help_text = 'Alert when stock falls below this level (default: 10)'
 
     def clean_price(self):
         """Validate that price is greater than 0."""

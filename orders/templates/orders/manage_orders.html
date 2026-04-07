@@ -19,6 +19,7 @@
                 {% if user.role == 'producer' %}
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
+                    <a href="/orders/stock-alerts/">Stock Alerts</a>
                     <a href="/orders/payments/">Payments</a>
                 {% else %}
                     <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
@@ -59,7 +60,13 @@
                     <p>Customer: {{ order.full_name }}</p>
                     <p>Placed: {{ order.created_at|date:"d M Y, H:i" }}</p>
                     <p>Delivery: <strong>{{ order.delivery_date|date:"d M Y" }}</strong></p>
-                    <p>Status: <strong>{{ order.get_status_display }}</strong></p>
+                    <p>Status: <strong>{{ order.get_status_display }}</strong>
+                        {% if order.status == 'pending' %}
+                        <span style="font-size: 0.85rem; color: #856404; background: #fff3cd; padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.5rem;">Needs Confirmation</span>
+                        {% elif order.status == 'ready' %}
+                        <span style="font-size: 0.85rem; color: #155724; background: #d4edda; padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.5rem;">Can Mark as Delivered</span>
+                        {% endif %}
+                    </p>
                 </div>
                 <div style="text-align: right;">
                     <a href="/orders/manage/{{ order.id }}/" class="btn">Manage Order</a>

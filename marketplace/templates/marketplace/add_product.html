@@ -24,6 +24,7 @@
             <a href="/browse/my-recipes/">My Recipes</a>
             <a href="/browse/my-stories/">My Stories</a>
             <a href="/orders/manage/">Manage Orders</a>
+            <a href="/orders/stock-alerts/">Stock Alerts</a>
             {% else %}
             <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
             <a href="/orders/my-orders/">My Orders</a>
@@ -107,6 +108,19 @@
                 {% if form.stock_quantity.errors %}
                 <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
                     {{ form.stock_quantity.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.low_stock_threshold.id_for_label }}">Low Stock Alert Threshold</label>
+                {{ form.low_stock_threshold }}
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">
+                    You'll be notified when stock falls below this level (default: 10)
+                </div>
+                {% if form.low_stock_threshold.errors %}
+                <div class="field-error" style="color: #d9534f; font-size: 0.85rem;">
+                    {{ form.low_stock_threshold.errors.0 }}
                 </div>
                 {% endif %}
             </div>

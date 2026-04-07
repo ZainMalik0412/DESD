@@ -13,7 +13,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from marketplace.models import Product
+from marketplace.models import Product, StockAlert
 from .models import Cart, CartItem, Order, OrderItem, StatusUpdate
 from .notifications import send_order_confirmation_email, send_status_update_email
 
@@ -124,6 +124,32 @@ def _get_customer_postcode(user):
     return getattr(user, "postcode", None)
 
 
+def _check_and_create_stock_alert(product):
+    """
+    Check if product stock is below threshold and create/resolve alerts accordingly.
+    """
+    if product.stock_quantity < product.low_stock_threshold:
+        # Check if there's already an active alert for this product
+        if not StockAlert.objects.filter(
+            product=product,
+            status=StockAlert.Status.ACTIVE
+        ).exists():
+            # Create new alert
+            StockAlert.objects.create(
+                product=product,
+                producer=product.producer,
+                stock_level=product.stock_quantity,
+                threshold=product.low_stock_threshold,
+                status=StockAlert.Status.ACTIVE
+            )
+    else:
+        # Stock is above threshold, resolve any active alerts
+        StockAlert.objects.filter(
+            product=product,
+            status=StockAlert.Status.ACTIVE
+        ).update(status=StockAlert.Status.RESOLVED)
+
+
 def calculate_food_miles(origin, destination):
     if not origin or not destination:
         return None
@@ -182,10 +208,19 @@ def _group_order_items_by_producer(items):
 
 
 def _get_previous_week_window():
+    """
+    Calculate the previous week's date range (Sunday to Saturday).
+    
+    Returns:
+        tuple: (previous_week_start, previous_week_end) where end is exclusive
+    """
     today = timezone.localdate()
-    current_week_start = today - timedelta(days=today.weekday())
-    previous_week_start = current_week_start - timedelta(days=7)
-    previous_week_end = current_week_start
+    # Calculate days since last Sunday (where Sunday = 0, Monday = 1, etc.)
+    # weekday() returns Mon=0, so we adjust: (weekday() + 1) % 7 gives Sun=0, Mon=1, etc.
+    days_since_sunday = (today.weekday() + 1) % 7
+    current_week_start = today - timedelta(days=days_since_sunday)  # Sunday of current week
+    previous_week_start = current_week_start - timedelta(days=7)  # Sunday of previous week
+    previous_week_end = current_week_start  # Sunday of current week (exclusive)
     return previous_week_start, previous_week_end
 
 
@@ -512,6 +547,9 @@ def stripe_success(request):
             else:
                 p.save(update_fields=["stock_quantity"])
 
+            # Check if stock alert should be created
+            _check_and_create_stock_alert(p)
+
             total += line_total
 
         order.total = total
@@ -537,7 +575,16 @@ def stripe_cancel(request):
 def order_list(request):
     if not _is_customer(request.user):
         raise Http404
-    orders = request.user.orders.order_by("-created_at")
+    orders = request.user.orders.prefetch_related("items__product__producer").order_by("-created_at")
+    
+    # Add producer names to each order
+    for order in orders:
+        producers = set()
+        for item in order.items.all():
+            if item.product and item.product.producer:
+                producers.add(item.product.producer.username)
+        order.producer_names = ", ".join(sorted(producers)) if producers else "N/A"
+    
     return render(request, "orders/order_list.html", {"orders": orders})
 
 
@@ -555,6 +602,118 @@ def order_detail(request, order_id):
         "grouped_items": grouped_items,
         "status_updates": status_updates,
     })
+
+
+@login_required
+def reorder(request, order_id):
+    """Add all items from a previous order to the current cart."""
+    if not _is_customer(request.user):
+        raise Http404
+    
+    if request.method != "POST":
+        return redirect("orders:order_detail", order_id=order_id)
+    
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    cart = _get_cart(request.user)
+    
+    from django.contrib import messages
+    
+    added_count = 0
+    unavailable_products = []
+    
+    for order_item in order.items.all():
+        product = order_item.product
+        
+        # Check if product still exists and is available
+        if not product:
+            unavailable_products.append(order_item.product_name)
+            continue
+        
+        if not product.is_available:
+            unavailable_products.append(product.name)
+            continue
+        
+        # Add to cart
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        cart_item.quantity = order_item.quantity if created else cart_item.quantity + order_item.quantity
+        cart_item.save()
+        added_count += 1
+    
+    if added_count > 0:
+        messages.success(request, f"Successfully added {added_count} item(s) from order #{order.id} to your cart.")
+    
+    if unavailable_products:
+        messages.warning(
+            request,
+            f"The following products are no longer available: {', '.join(unavailable_products)}"
+        )
+    
+    return redirect("orders:cart")
+
+
+@login_required
+def download_receipt(request, order_id):
+    """Download order receipt as CSV."""
+    if not _is_customer(request.user):
+        raise Http404
+    
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    items = order.items.select_related("product", "product__producer").all()
+    
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="order_{order.id}_receipt.csv"'
+    
+    writer = csv.writer(response)
+    
+    # Header information
+    writer.writerow(["Bristol Regional Food Network"])
+    writer.writerow(["Order Receipt"])
+    writer.writerow([])
+    writer.writerow(["Order Number:", order.id])
+    writer.writerow(["Order Date:", order.created_at.strftime("%d %B %Y, %H:%M")])
+    if order.delivery_date:
+        writer.writerow(["Delivery Date:", order.delivery_date.strftime("%d %B %Y")])
+    writer.writerow(["Status:", order.get_status_display()])
+    writer.writerow([])
+    
+    # Delivery address
+    writer.writerow(["Delivery Address:"])
+    writer.writerow([_sanitize_csv_field(order.full_name)])
+    writer.writerow([_sanitize_csv_field(order.address_line1)])
+    if order.address_line2:
+        writer.writerow([_sanitize_csv_field(order.address_line2)])
+    writer.writerow([_sanitize_csv_field(f"{order.city}, {order.postcode}")])
+    writer.writerow([_sanitize_csv_field(order.email)])
+    writer.writerow([])
+    
+    # Items header
+    writer.writerow(["Product", "Producer", "Price", "Quantity", "Total"])
+    
+    # Group items by producer
+    grouped_items = _group_order_items_by_producer(items)
+    
+    for group in grouped_items:
+        for item in group["items"]:
+            producer_name = group["producer"].username if group["producer"] else "Unknown"
+            writer.writerow([
+                _sanitize_csv_field(item.product_name),
+                _sanitize_csv_field(producer_name),
+                f"£{item.unit_price:.2f}",
+                item.quantity,
+                f"£{item.line_total:.2f}"
+            ])
+        
+        writer.writerow([])
+        writer.writerow(["", "", "", "Subtotal:", f"£{group['subtotal']:.2f}"])
+        writer.writerow([])
+    
+    # Total
+    writer.writerow(["", "", "", "Order Total:", f"£{order.total:.2f}"])
+    
+    if order.commission:
+        writer.writerow(["", "", "", "Network Commission (5%):", f"£{order.commission:.2f}"])
+    
+    return response
 
 
 def _is_producer(user):
@@ -617,6 +776,48 @@ def manage_order_detail(request, order_id):
         "items": items,
         "form": form,
         "status_updates": status_updates,
+    })
+
+
+@login_required
+def stock_alerts(request):
+    """
+    Display low stock alerts for producers.
+    """
+    if not _is_producer(request.user):
+        raise Http404
+
+    # Handle alert dismissal
+    if request.method == "POST":
+        alert_id = request.POST.get("alert_id")
+        action = request.POST.get("action")
+        
+        if alert_id and action == "dismiss":
+            StockAlert.objects.filter(
+                id=alert_id,
+                producer=request.user,
+                status=StockAlert.Status.ACTIVE
+            ).update(status=StockAlert.Status.DISMISSED)
+            
+            from django.contrib import messages
+            messages.success(request, "Alert dismissed.")
+            
+            return redirect("orders:stock_alerts")
+
+    # Get all alerts for this producer
+    active_alerts = StockAlert.objects.filter(
+        producer=request.user,
+        status=StockAlert.Status.ACTIVE
+    ).select_related("product").order_by("-created_at")
+    
+    resolved_alerts = StockAlert.objects.filter(
+        producer=request.user,
+        status__in=[StockAlert.Status.RESOLVED, StockAlert.Status.DISMISSED]
+    ).select_related("product").order_by("-updated_at")[:10]  # Last 10 resolved
+
+    return render(request, "orders/stock_alerts.html", {
+        "active_alerts": active_alerts,
+        "resolved_alerts": resolved_alerts,
     })
 
 

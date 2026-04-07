@@ -9,6 +9,7 @@ from django.db.models import Q
 from .models import Product, Category, Recipe, RecipeProduct, FarmStory, FavoriteRecipe
 from .forms import ProductForm, RecipeForm, FarmStoryForm
 from accounts.models import CustomUser
+from orders.views import _check_and_create_stock_alert
 
 
 POSTCODE_COORDS = {
@@ -209,6 +210,8 @@ def add_product(request):
                 product = form.save(commit=False)
                 product.producer = request.user
                 product.save()
+                # Check and update stock alerts
+                _check_and_create_stock_alert(product)
                 success = f'"{product.name}" has been added successfully!'
                 form = ProductForm()
             except Exception as e:
@@ -236,6 +239,10 @@ def edit_product(request, product_id):
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
             form.save()
+            # Refresh product from database to get latest values
+            product.refresh_from_db()
+            # Check and update stock alerts
+            _check_and_create_stock_alert(product)
             success = f'"{product.name}" has been updated successfully!'
         else:
             error = 'Please correct the errors below.'

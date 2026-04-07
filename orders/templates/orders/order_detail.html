@@ -47,9 +47,20 @@
     {% endif %}
 
     <div class="page-wide">
-        <h2>Order #{{ order.id }}</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2>Order #{{ order.id }}</h2>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/orders/my-orders/{{ order.id }}/receipt/" class="btn" style="background: #6c757d;">Download Receipt</a>
+                {% if order.status == 'delivered' %}
+                <form method="post" action="/orders/my-orders/{{ order.id }}/reorder/" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn" style="background: #4a7c59;">Reorder</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
 
-        <div class="product-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+        <div class="product-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 1.5rem;">
             <div class="product-card">
                 <h3>Order Info</h3>
                 <p>Status: <strong>{{ order.get_status_display }}</strong></p>
@@ -66,6 +77,13 @@
                 {% if order.address_line2 %}<p>{{ order.address_line2 }}</p>{% endif %}
                 <p>{{ order.city }}, {{ order.postcode }}</p>
                 <p>{{ order.email }}</p>
+            </div>
+            <div class="product-card">
+                <h3>Payment Information</h3>
+                <p>Method: <strong>Card Payment</strong></p>
+                <p>Card: <strong>•••• •••• •••• ••••</strong></p>
+                <p>Status: <strong style="color: #4a7c59;">Paid</strong></p>
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">Securely processed by Stripe</p>
             </div>
         </div>
 

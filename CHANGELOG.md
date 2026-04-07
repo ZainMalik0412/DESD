@@ -225,3 +225,36 @@
   - Updated general button selector to button:not([class]) to prevent style conflicts
 - Added cancel buttons to all product, recipe, and story forms (add/edit pages)
 - Updated URLs in marketplace/urls.py for all recipe and story endpoints
+# V1.0.29 - Alex McBride
+- Implemented test cases 21, 22, 23
+- Added `Product.low_stock_threshold` field
+- Created StockAlert model with status tracking (ACTIVE, RESOLVED, DISMISSED)
+- Implemented stock alert checking logic:
+  - Created _check_and_create_stock_alert() function in orders/views.py
+  - Automatically creates alerts when stock falls below threshold
+  - Prevents duplicate alerts for same product
+  - Automatically resolves alerts when stock is replenished above threshold
+- Integrated alert checking in checkout process:
+  - Added stock alert check after stock decrement in stripe_success view
+  - Alerts triggered automatically when orders are completed
+- Integrated alert checking in product management
+- Created producer Stock Alerts dashboard:
+  - New stock_alerts view in orders/views.py with producer-only access
+  - Displays active alerts with product details, stock level, and threshold
+  - Shows alert history (last 10 resolved/dismissed alerts)
+  - Dismiss button for producers to acknowledge alerts
+  - "Update Stock" button links directly to product edit page
+  - Added URL route: /orders/stock-alerts/
+- Created orders/templates/orders/stock_alerts.html:
+  - Color-coded alert cards (red for active, green for resolved, grey for dismissed)
+  - Alert badge system showing status
+  - Detailed information display (current stock, threshold, creation date)
+  - Action buttons (dismiss alert, update stock)
+  - Alert history section with resolved/dismissed alerts
+  - Responsive design matching existing UI
+- Added Stock Alerts navigation link to 20+ existing templates
+- Updated ProductForm to include low_stock_threshold field
+- Updated product templates to display threshold field
+- System prevents order fulfillment failures by alerting producers to restock
+- Producers can customise threshold per product based on demand patterns
+- Stock monitoring works automatically across all stock-changing operations

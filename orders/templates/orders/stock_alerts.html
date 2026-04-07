@@ -1,0 +1,195 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Alerts – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <style>
+        .alert-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            border-left: 4px solid #dc3545;
+        }
+        .alert-card.resolved {
+            border-left-color: #28a745;
+            opacity: 0.7;
+        }
+        .alert-card.dismissed {
+            border-left-color: #6c757d;
+            opacity: 0.6;
+        }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+        .alert-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        .alert-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .alert-badge.active {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .alert-badge.resolved {
+            background: #d4edda;
+            color: #155724;
+        }
+        .alert-badge.dismissed {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .alert-details {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+        .alert-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-dismiss {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-dismiss:hover {
+            background: #5a6268;
+        }
+        .section-title {
+            font-size: 1.3rem;
+            margin: 2rem 0 1rem 0;
+            font-weight: 600;
+        }
+        .no-alerts {
+            background: #d4edda;
+            color: #155724;
+            padding: 1.5rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+                {% if user.role == 'producer' %}
+                    <a href="/browse/add-product/">Add Product</a>
+                    <a href="/orders/manage/">Manage Orders</a>
+                    <a href="/orders/stock-alerts/">Stock Alerts</a>
+                    <a href="/orders/payments/">Payments</a>
+                {% else %}
+                    <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
+                    <a href="/orders/my-orders/">My Orders</a>
+                    <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">{% csrf_token %}<button type="submit" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">Log Out</button></form>
+                    </div>
+                </div>
+            {% else %}
+                <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    {% if messages %}
+    <div style="max-width: 1200px; margin: 1rem auto; padding: 0 2rem;">
+        {% for message in messages %}
+        <div style="background:#d4edda; color:#155724; padding:0.75rem 1rem; text-align:center; border-radius:4px; margin-bottom:0.5rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="page-wide">
+        <h1 style="margin-bottom: 1rem;">Stock Alerts</h1>
+        <p style="color: #6c757d; margin-bottom: 2rem;">Monitor low stock levels for your products</p>
+
+        <h2 class="section-title">Active Alerts ({{ active_alerts.count }})</h2>
+        
+        {% if active_alerts %}
+            {% for alert in active_alerts %}
+            <div class="alert-card">
+                <div class="alert-header">
+                    <h3 class="alert-title">{{ alert.product.name }}</h3>
+                    <span class="alert-badge active">Active</span>
+                </div>
+                <div class="alert-details">
+                    <strong>Current Stock:</strong> {{ alert.stock_level }} {{ alert.product.unit }}<br>
+                    <strong>Threshold:</strong> {{ alert.threshold }} {{ alert.product.unit }}<br>
+                    <strong>Alert Created:</strong> {{ alert.created_at|date:"M d, Y g:i A" }}
+                </div>
+                <div class="alert-actions">
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="alert_id" value="{{ alert.id }}">
+                        <input type="hidden" name="action" value="dismiss">
+                        <button type="submit" class="btn-dismiss">Dismiss Alert</button>
+                    </form>
+                    <a href="/browse/product/{{ alert.product.id }}/edit/" class="btn-dismiss" style="background: #007bff; text-decoration: none; line-height: 1.5;">Update Stock</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-alerts">
+                ✓ No active stock alerts. All products are above their thresholds.
+            </div>
+        {% endif %}
+
+        <h2 class="section-title">Recent History (Last 10)</h2>
+        
+        {% if resolved_alerts %}
+            {% for alert in resolved_alerts %}
+            <div class="alert-card {% if alert.status == 'resolved' %}resolved{% else %}dismissed{% endif %}">
+                <div class="alert-header">
+                    <h3 class="alert-title">{{ alert.product.name }}</h3>
+                    <span class="alert-badge {% if alert.status == 'resolved' %}resolved{% else %}dismissed{% endif %}">
+                        {% if alert.status == 'resolved' %}Resolved{% else %}Dismissed{% endif %}
+                    </span>
+                </div>
+                <div class="alert-details">
+                    <strong>Stock Level (at alert):</strong> {{ alert.stock_level }} {{ alert.product.unit }}<br>
+                    <strong>Threshold:</strong> {{ alert.threshold }} {{ alert.product.unit }}<br>
+                    <strong>Created:</strong> {{ alert.created_at|date:"M d, Y" }}<br>
+                    <strong>Updated:</strong> {{ alert.updated_at|date:"M d, Y" }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #6c757d; font-style: italic;">No alert history yet.</p>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>Bristol Regional Food Network – TC-023 Stock Alerts System</p>
+    </footer>
+</body>
+
+</html>
