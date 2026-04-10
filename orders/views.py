@@ -73,9 +73,9 @@ def _get_outward_code(postcode):
     return parts[0] if parts else None
 
 
-def _sanitize_csv_field(value):
+def _sanitise_csv_field(value):
     """
-    Sanitize CSV field to prevent CSV injection attacks.
+    Sanitise CSV field to prevent CSV injection attacks.
     Formulas starting with =, +, -, @, tab, or carriage return can execute in Excel.
     """
     if not value:
@@ -678,12 +678,12 @@ def download_receipt(request, order_id):
     
     # Delivery address
     writer.writerow(["Delivery Address:"])
-    writer.writerow([_sanitize_csv_field(order.full_name)])
-    writer.writerow([_sanitize_csv_field(order.address_line1)])
+    writer.writerow([_sanitise_csv_field(order.full_name)])
+    writer.writerow([_sanitise_csv_field(order.address_line1)])
     if order.address_line2:
-        writer.writerow([_sanitize_csv_field(order.address_line2)])
-    writer.writerow([_sanitize_csv_field(f"{order.city}, {order.postcode}")])
-    writer.writerow([_sanitize_csv_field(order.email)])
+        writer.writerow([_sanitise_csv_field(order.address_line2)])
+    writer.writerow([_sanitise_csv_field(f"{order.city}, {order.postcode}")])
+    writer.writerow([_sanitise_csv_field(order.email)])
     writer.writerow([])
     
     # Items header
@@ -696,8 +696,8 @@ def download_receipt(request, order_id):
         for item in group["items"]:
             producer_name = group["producer"].username if group["producer"] else "Unknown"
             writer.writerow([
-                _sanitize_csv_field(item.product_name),
-                _sanitize_csv_field(producer_name),
+                _sanitise_csv_field(item.product_name),
+                _sanitise_csv_field(producer_name),
                 f"£{item.unit_price:.2f}",
                 item.quantity,
                 f"£{item.line_total:.2f}"
@@ -870,9 +870,9 @@ def payments_report_csv(request):
     ])
 
     for row in settlement_rows:
-        # Sanitize all fields to prevent CSV injection
-        customer_name = _sanitize_csv_field(row["order"].full_name)
-        items_list = "; ".join(_sanitize_csv_field(item.product_name) for item in row["items"])
+        # sanitise all fields to prevent CSV injection
+        customer_name = _sanitise_csv_field(row["order"].full_name)
+        items_list = "; ".join(_sanitise_csv_field(item.product_name) for item in row["items"])
         
         writer.writerow([
             row["order"].id,
@@ -896,3 +896,328 @@ def payments_report_csv(request):
     ])
 
     return response
+
+
+# Admin Financial Reporting Views
+
+def _is_admin(user):
+    """Check if user has admin role."""
+    return getattr(user, "role", None) == "admin"
+
+
+@login_required
+def admin_financial_reports(request):
+    """Admin view for network commission monitoring and financial reporting."""
+    if not _is_admin(request.user):
+        raise Http404
+
+    # Get date range from request or default to last 2 weeks
+    end_date_str = request.GET.get('end_date')
+    start_date_str = request.GET.get('start_date')
+    
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    else:
+        end_date = date.today()
+    
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    else:
+        start_date = end_date - timedelta(days=14)
+    
+    # Get all orders in the date range (only completed/delivered orders for financial reporting)
+    orders = Order.objects.filter(
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
+        status__in=[Order.STATUS_CONFIRMED, Order.STATUS_READY, Order.STATUS_DELIVERED]
+    ).select_related('user').prefetch_related('items__product__producer').order_by('-created_at')
+    
+    # Calculate totals
+    total_order_value = Decimal('0.00')
+    total_commission = Decimal('0.00')
+    total_producer_payment = Decimal('0.00')
+    
+    order_details = []
+    for order in orders:
+        total_order_value += order.total
+        total_commission += order.commission
+        total_producer_payment += order.producer_payment
+        
+        # Get producer breakdown for multi-vendor orders
+        producer_breakdown = {}
+        for item in order.items.all():
+            if item.product:
+                producer = item.product.producer
+                if producer.id not in producer_breakdown:
+                    producer_breakdown[producer.id] = {
+                        'producer': producer,
+                        'subtotal': Decimal('0.00'),
+                        'commission': Decimal('0.00'),
+                        'payment': Decimal('0.00')
+                    }
+                producer_breakdown[producer.id]['subtotal'] += item.line_total
+        
+        # Calculate per-producer commissions (5% of their subtotal)
+        for producer_data in producer_breakdown.values():
+            producer_data['commission'] = (producer_data['subtotal'] * Order.COMMISSION_RATE).quantize(Decimal('0.01'))
+            producer_data['payment'] = (producer_data['subtotal'] - producer_data['commission']).quantize(Decimal('0.01'))
+        
+        order_details.append({
+            'order': order,
+            'producer_breakdown': list(producer_breakdown.values())
+        })
+    
+    # Get monthly summary (current month)
+    current_month_start = date.today().replace(day=1)
+    current_month_orders = Order.objects.filter(
+        created_at__date__gte=current_month_start,
+        status__in=[Order.STATUS_CONFIRMED, Order.STATUS_READY, Order.STATUS_DELIVERED]
+    )
+    monthly_total = sum(o.total for o in current_month_orders)
+    monthly_commission = sum(o.commission for o in current_month_orders)
+    monthly_count = current_month_orders.count()
+    
+    # Get year-to-date summary
+    year_start = date.today().replace(month=1, day=1)
+    ytd_orders = Order.objects.filter(
+        created_at__date__gte=year_start,
+        status__in=[Order.STATUS_CONFIRMED, Order.STATUS_READY, Order.STATUS_DELIVERED]
+    )
+    ytd_total = sum(o.total for o in ytd_orders)
+    ytd_commission = sum(o.commission for o in ytd_orders)
+    ytd_count = ytd_orders.count()
+    
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'orders': order_details,
+        'total_order_value': total_order_value,
+        'total_commission': total_commission,
+        'total_producer_payment': total_producer_payment,
+        'order_count': orders.count(),
+        'monthly_total': monthly_total,
+        'monthly_commission': monthly_commission,
+        'monthly_count': monthly_count,
+        'ytd_total': ytd_total,
+        'ytd_commission': ytd_commission,
+        'ytd_count': ytd_count,
+    }
+    
+    return render(request, 'orders/admin_financial_reports.html', context)
+
+
+@login_required
+def admin_order_detail(request, order_id):
+    """Admin view for detailed order breakdown including commission calculations."""
+    if not _is_admin(request.user):
+        raise Http404
+    
+    order = get_object_or_404(Order, id=order_id)
+    items = order.items.select_related('product__producer').all()
+    
+    # Calculate producer breakdown
+    producer_breakdown = {}
+    for item in items:
+        if item.product:
+            producer = item.product.producer
+            if producer.id not in producer_breakdown:
+                producer_breakdown[producer.id] = {
+                    'producer': producer,
+                    'items': [],
+                    'subtotal': Decimal('0.00'),
+                    'commission': Decimal('0.00'),
+                    'payment': Decimal('0.00')
+                }
+            producer_breakdown[producer.id]['items'].append(item)
+            producer_breakdown[producer.id]['subtotal'] += item.line_total
+    
+    # Calculate per-producer commissions
+    for producer_data in producer_breakdown.values():
+        producer_data['commission'] = (producer_data['subtotal'] * Order.COMMISSION_RATE).quantize(Decimal('0.01'))
+        producer_data['payment'] = (producer_data['subtotal'] - producer_data['commission']).quantize(Decimal('0.01'))
+    
+    # Calculate verification total using Decimal arithmetic (avoid template precision issues)
+    verification_total = order.commission + order.producer_payment
+    
+    context = {
+        'order': order,
+        'items': items,
+        'producer_breakdown': list(producer_breakdown.values()),
+        'commission_rate': Order.COMMISSION_RATE * 100,  # Convert to percentage
+        'verification_total': verification_total,
+    }
+    
+    return render(request, 'orders/admin_order_detail.html', context)
+
+
+@login_required
+def admin_financial_reports_csv(request):
+    """Export financial reports as CSV for accounting software."""
+    if not _is_admin(request.user):
+        raise Http404
+    
+    # Get date range from request
+    end_date_str = request.GET.get('end_date')
+    start_date_str = request.GET.get('start_date')
+    
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    else:
+        end_date = date.today()
+    
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    else:
+        start_date = end_date - timedelta(days=14)
+    
+    # Get orders
+    orders = Order.objects.filter(
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
+        status__in=[Order.STATUS_CONFIRMED, Order.STATUS_READY, Order.STATUS_DELIVERED]
+    ).select_related('user').prefetch_related('items__product__producer').order_by('-created_at')
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="financial_report_{start_date}_{end_date}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'Order ID',
+        'Date',
+        'Customer',
+        'Producer',
+        'Order Total',
+        'Commission (5%)',
+        'Producer Payment (95%)',
+        'Status',
+        'Number of Items'
+    ])
+    
+    total_order_value = Decimal('0.00')
+    total_commission = Decimal('0.00')
+    total_producer_payment = Decimal('0.00')
+    
+    for order in orders:
+        # Group items by producer
+        producer_breakdown = {}
+        for item in order.items.all():
+            if item.product:
+                producer = item.product.producer
+                if producer.id not in producer_breakdown:
+                    producer_breakdown[producer.id] = {
+                        'producer': producer,
+                        'subtotal': Decimal('0.00'),
+                        'item_count': 0
+                    }
+                producer_breakdown[producer.id]['subtotal'] += item.line_total
+                producer_breakdown[producer.id]['item_count'] += 1
+        
+        # Write a row for each producer in the order
+        for producer_data in producer_breakdown.values():
+            producer_commission = (producer_data['subtotal'] * Order.COMMISSION_RATE).quantize(Decimal('0.01'))
+            producer_payment = (producer_data['subtotal'] - producer_commission).quantize(Decimal('0.01'))
+            
+            writer.writerow([
+                order.id,
+                order.created_at.strftime('%Y-%m-%d'),
+                _sanitise_csv_field(order.full_name),
+                _sanitise_csv_field(producer_data['producer'].username),
+                f"{producer_data['subtotal']:.2f}",
+                f"{producer_commission:.2f}",
+                f"{producer_payment:.2f}",
+                order.get_status_display(),
+                producer_data['item_count']
+            ])
+            
+            total_order_value += producer_data['subtotal']
+            total_commission += producer_commission
+            total_producer_payment += producer_payment
+    
+    # Add totals row
+    writer.writerow([])
+    writer.writerow([
+        'TOTALS',
+        '',
+        '',
+        '',
+        f"{total_order_value:.2f}",
+        f"{total_commission:.2f}",
+        f"{total_producer_payment:.2f}",
+        '',
+        ''
+    ])
+    
+    return response
+
+
+@login_required
+def admin_monthly_summary(request):
+    """Admin view for monthly commission summaries."""
+    if not _is_admin(request.user):
+        raise Http404
+    
+    # Get month from request or default to current month
+    month_str = request.GET.get('month')
+    if month_str:
+        month_date = datetime.strptime(month_str, '%Y-%m').date()
+    else:
+        month_date = date.today().replace(day=1)
+    
+    # Calculate date range for the month
+    if month_date.month == 12:
+        next_month = month_date.replace(year=month_date.year + 1, month=1)
+    else:
+        next_month = month_date.replace(month=month_date.month + 1)
+    
+    # Get orders for the month
+    orders = Order.objects.filter(
+        created_at__date__gte=month_date,
+        created_at__date__lt=next_month,
+        status__in=[Order.STATUS_CONFIRMED, Order.STATUS_READY, Order.STATUS_DELIVERED]
+    ).select_related('user').prefetch_related('items__product__producer')
+    
+    # Calculate totals
+    monthly_total = sum(o.total for o in orders)
+    monthly_commission = sum(o.commission for o in orders)
+    monthly_producer_payment = sum(o.producer_payment for o in orders)
+    
+    # Get producer-wise breakdown
+    producer_stats = {}
+    for order in orders:
+        for item in order.items.all():
+            if item.product:
+                producer = item.product.producer
+                if producer.id not in producer_stats:
+                    producer_stats[producer.id] = {
+                        'producer': producer,
+                        'total_sales': Decimal('0.00'),
+                        'commission': Decimal('0.00'),
+                        'payment': Decimal('0.00'),
+                        'order_count': 0
+                    }
+                producer_stats[producer.id]['total_sales'] += item.line_total
+        
+        # Count unique producers per order
+        order_producers = set()
+        for item in order.items.all():
+            if item.product:
+                order_producers.add(item.product.producer.id)
+        for producer_id in order_producers:
+            if producer_id in producer_stats:
+                producer_stats[producer_id]['order_count'] += 1
+    
+    # Calculate commissions for each producer
+    for producer_data in producer_stats.values():
+        producer_data['commission'] = (producer_data['total_sales'] * Order.COMMISSION_RATE).quantize(Decimal('0.01'))
+        producer_data['payment'] = (producer_data['total_sales'] - producer_data['commission']).quantize(Decimal('0.01'))
+    
+    context = {
+        'month': month_date,
+        'monthly_total': monthly_total,
+        'monthly_commission': monthly_commission,
+        'monthly_producer_payment': monthly_producer_payment,
+        'order_count': orders.count(),
+        'producer_stats': list(producer_stats.values()),
+    }
+    
+    return render(request, 'orders/admin_monthly_summary.html', context)

@@ -83,6 +83,16 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.producer.username}"
+    
+    def get_average_rating(self):
+        """Calculate the average rating for this product."""
+        from django.db.models import Avg
+        result = self.reviews.aggregate(avg_rating=Avg('rating'))
+        return result['avg_rating'] or 0
+    
+    def get_review_count(self):
+        """Get the total number of reviews for this product."""
+        return self.reviews.count()
 
 
 class Basket(models.Model):
@@ -341,3 +351,52 @@ class StockAlert(models.Model):
     @property
     def is_active(self):
         return self.status == self.Status.ACTIVE
+
+
+class ProductReview(models.Model):
+    """Reviews and ratings for products by customers who have purchased them."""
+    
+    class Rating(models.IntegerChoices):
+        ONE_STAR = 1, "1 Star"
+        TWO_STARS = 2, "2 Stars"
+        THREE_STARS = 3, "3 Stars"
+        FOUR_STARS = 4, "4 Stars"
+        FIVE_STARS = 5, "5 Stars"
+    
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_reviews")
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name="product_reviews", help_text="Order where the product was purchased")
+    
+    rating = models.IntegerField(choices=Rating.choices)
+    title = models.CharField(max_length=200, help_text="Brief review title")
+    review_text = models.TextField(help_text="Detailed review")
+    is_anonymous = models.BooleanField(default=False, help_text="Hide customer name in public display")
+    
+    producer_response = models.TextField(blank=True, help_text="Producer's response to the review")
+    producer_response_date = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("product", "customer")
+        indexes = [
+            models.Index(fields=["product", "-created_at"]),
+        ]
+    
+    def __str__(self):
+        return f"{self.rating}★ - {self.product.name} by {self.customer.username}"
+    
+    @property
+    def is_verified_purchase(self):
+        """Returns True if the review is from a delivered/completed order."""
+        from orders.models import Order as OrdersModel
+        return self.order.status == OrdersModel.STATUS_DELIVERED
+    
+    @property
+    def display_name(self):
+        """Returns the display name for the review author."""
+        if self.is_anonymous:
+            return "Anonymous"
+        return self.customer.get_full_name() or self.customer.username

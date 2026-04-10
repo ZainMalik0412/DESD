@@ -258,3 +258,78 @@
 - System prevents order fulfillment failures by alerting producers to restock
 - Producers can customise threshold per product based on demand patterns
 - Stock monitoring works automatically across all stock-changing operations
+# V1.0.30 - Alex McBride
+- Implemented test cases 24, 25
+- Created ProductReview model with comprehensive review functionality:
+  - Star rating system (1-5 stars using IntegerChoices)
+  - Review title and detailed review text fields
+  - Anonymous review option to hide customer names
+  - Producer response capability with timestamp
+  - Verified purchase validation via order linkage
+  - Unique constraint: one review per customer per product
+  - Foreign key to orders.Order (resolved model conflict with marketplace.Order)
+- Created ProductReviewForm with 5-star RadioSelect widget
+- Implemented 5 review views with authentication and authorisation
+- Created 6 review templates with consistent UI design
+- Enhanced Product model with review aggregation methods:
+  - get_average_rating(): calculates average star rating across all reviews
+  - get_review_count(): returns total number of reviews for product
+- Updated product_detail.html with comprehensive reviews section
+- Enhanced browse view with review statistics using Django ORM:
+  - Added Avg() and Count() annotations for avg_rating and review_count
+  - Optimised database queries with select_related for producer/category
+  - Review data preloaded for all products to prevent N+1 queries
+- Updated browse.html with star rating display on product cards
+- Added "Write Review" links to order_detail.html for delivered orders
+- Fixed Order model reference conflict:
+  - ProductReview now correctly uses 'orders.Order' (actual order system)
+  - Previously incorrectly referenced marketplace.Order (unused legacy model)
+  - Updated is_verified_purchase property to check Order.STATUS_DELIVERED
+  - Fixed product_detail and submit_review views to query orders.Order
+  - Created migration 0013_alter_productreview_order.py for FK update
+- Fixed URL namespace issues in browse.html:
+  - Changed from {% url 'marketplace:product_detail' %} to hardcoded /browse/product/{id}/
+  - Marketplace app has no namespace configured, hardcoded paths match existing pattern
+  - Applied to all review-related URLs (product detail, review submission)
+- Integrated ProductReview into Django admin
+- Business logic implementation:
+  - Only customers with delivered orders (STATUS_DELIVERED) can submit reviews
+  - System prevents duplicate reviews (unique_together constraint)
+  - Customers can edit and delete their own reviews
+  - Producers can only respond to reviews on their own products
+- Implemented comprehensive admin financial reporting system
+  - Created 4 admin financial reporting views in orders/views.py
+  - Added _is_admin() helper function for role-based access control
+- Created 3 admin financial reporting templates:
+  - admin_financial_reports.html: main dashboard with period summaries, YTD totals, order breakdown table
+  - admin_order_detail.html: detailed order view with commission verification, multi-vendor breakdown
+  - admin_monthly_summary.html: monthly summary with producer-wise statistics
+- Financial reporting features:
+  - Date range filtering (default: last 2 weeks)
+  - Total order value, network commission (5%), producer payment (95%) calculations
+  - Multi-vendor order support with per-producer commission breakdown
+  - Monthly and year-to-date summary statistics
+  - CSV export capability for integration with accounting software
+  - Commission verification with Decimal precision to prevent rounding errors
+  - Audit trail linking all calculations to source orders
+  - Access restricted to admin role only (403 for non-admin users)
+- Added 4 URL routes to orders/urls.py:
+- Updated navigation across all templates
+- Fixed verification calculation precision issue:
+  - Moved calculation from template (using `add` filter) to Python view
+  - Used proper Decimal arithmetic to prevent float conversion and precision loss
+  - Added verification_total to admin_order_detail context
+- Fixed FavoriteRecipe fixture loading issue:
+  - Resolved UNIQUE constraint violation when loading favorites.json
+  - Cleared existing FavoriteRecipe data before fixture reload
+  - Prevented duplicate (user_id, recipe_id) entries
+- Financial compliance features:
+  - 5% network commission consistently applied across all orders
+  - Multi-vendor order commission calculated on total order value
+  - Producer payments calculated per supplier (95% of their subtotal)
+  - All calculations accurate to 2 decimal places
+  - Reports suitable for tax compliance and business accounting
+  - System prevents unauthorised access to financial data
+  - Anonymous reviews hide customer name but show "Verified Purchase" badge
+  - Review submission requires login (@login_required decorators)
+- New URL routes added to marketplace/urls.py

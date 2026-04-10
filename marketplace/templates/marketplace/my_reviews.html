@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Reviews – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse Products</a>
+            <a href="/browse/recipes/">Recipes</a>
+            <a href="/browse/stories/">Farm Stories</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+            {% if user.role == 'admin' %}
+            <a href="/orders/admin/financial-reports/">Financial Reports</a>
+            <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+            {% elif user.role == 'producer' %}
+            <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
+            <a href="/browse/my-recipes/">My Recipes</a>
+            <a href="/browse/my-stories/">My Stories</a>
+            <a href="/orders/manage/">Manage Orders</a>
+            <a href="/orders/stock-alerts/">Stock Alerts</a>
+            {% else %}
+            <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
+            <a href="/orders/my-orders/">My Orders</a>
+            <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
+            <a href="/browse/my-reviews/">My Reviews</a>
+            {% endif %}
+            <div class="user-menu" onclick="this.classList.toggle('open')">
+                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                <div class="user-dropdown">
+                    <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">{% csrf_token %}<button type="submit" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">Log Out</button></form>
+                </div>
+            </div>
+            {% else %}
+            <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <div class="page-wide">
+        <h2>My Product Reviews</h2>
+
+        {% if reviews %}
+        <div style="display: grid; gap: 1.5rem; margin-top: 1.5rem;">
+            {% for review in reviews %}
+            <div class="product-card" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="margin: 0 0 0.5rem 0;">
+                            <a href="/browse/product/{{ review.product.id }}/" style="color: #333; text-decoration: none;">{{ review.product.name }}</a>
+                        </h3>
+                        <p style="margin: 0; color: #666; font-size: 0.9rem;">
+                            By {{ review.product.producer.first_name }} {{ review.product.producer.last_name }}
+                        </p>
+                    </div>
+                    <div style="font-size: 1.2rem; color: #f5a623;">
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                    <p style="margin: 0 0 0.5rem 0; font-weight: bold;">{{ review.title }}</p>
+                    <p style="margin: 0;">{{ review.review_text }}</p>
+                </div>
+
+                <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #666;">
+                    Posted on {{ review.created_at|date:"F d, Y" }}
+                    {% if review.is_anonymous %} (Anonymous){% endif %}
+                </p>
+
+                {% if review.producer_response %}
+                <div style="background: #e8f5e9; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border-left: 3px solid #4caf50;">
+                    <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #2e7d32;">Producer's Response:</p>
+                    <p style="margin: 0;">{{ review.producer_response }}</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #666;">
+                        {{ review.producer_response_date|date:"F d, Y" }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="/browse/review/{{ review.id }}/edit/" class="btn" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">Edit Review</a>
+                    <a href="/browse/product/{{ review.product.id }}/" class="btn-primary" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">View Product</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; background: #f8f9fa; border-radius: 8px; margin-top: 2rem;">
+            <p style="margin: 0 0 1rem 0; color: #666;">You haven't written any reviews yet.</p>
+            <a href="/browse/" class="btn">Browse Products</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+
+</html>

@@ -5,16 +5,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bristol Regional Food Network</title>
+    <title>Review Error – BRFN</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
 
-<body>
-
+<body class="app-body">
     <header>
-        <h1>Bristol Regional Food Network</h1>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
         <nav>
-            <a href="/browse/">Browse</a>
+            <a href="/browse/">Browse Products</a>
+            <a href="/browse/recipes/">Recipes</a>
+            <a href="/browse/stories/">Farm Stories</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
             {% if user.role == 'admin' %}
@@ -23,10 +24,14 @@
             {% elif user.role == 'producer' %}
             <a href="/browse/add-product/">Add Product</a>
             <a href="/browse/my-products/">My Products</a>
+            <a href="/browse/my-recipes/">My Recipes</a>
+            <a href="/browse/my-stories/">My Stories</a>
             <a href="/orders/manage/">Manage Orders</a>
+            <a href="/orders/stock-alerts/">Stock Alerts</a>
             {% else %}
             <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
             <a href="/orders/my-orders/">My Orders</a>
+            <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
             <a href="/browse/my-reviews/">My Reviews</a>
             {% endif %}
             <div class="user-menu" onclick="this.classList.toggle('open')">
@@ -41,22 +46,27 @@
         </nav>
     </header>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div style="background:#d4edda;color:#155724;padding:0.75rem 1rem;text-align:center;">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
+    <div class="page-wide">
+        <div class="form-card">
+            <h2>Unable to Submit Review</h2>
+            
+            <div style="background: #ffebee; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; color: #c00;">
+                <p style="margin: 0; font-weight: bold;">{{ error_message }}</p>
+            </div>
 
-    <div class="hero">
-        <h2>Fresh Local Produce</h2>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-        <a href="/browse/">Browse Produce</a>
+            {% if review %}
+            <p>You can view or edit your existing review:</p>
+            <a href="/browse/review/{{ review.id }}/edit/" class="btn">Edit Your Review</a>
+            {% elif product %}
+            <p>Return to the product page to purchase this item:</p>
+            <a href="/browse/product/{{ product.id }}/" class="btn">View Product</a>
+            {% else %}
+            <a href="/browse/" class="btn">Browse Products</a>
+            {% endif %}
+        </div>
     </div>
 
-    <footer>
-        &copy; 2026 Bristol Regional Food Network
-    </footer>
-
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
 </body>
 
 </html>

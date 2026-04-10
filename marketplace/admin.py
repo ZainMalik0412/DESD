@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Category, Product, Basket, BasketItem, 
     Order, OrderItem, Transaction, Commission, AuditLog,
-    Recipe, RecipeProduct, FarmStory, FavoriteRecipe
+    Recipe, RecipeProduct, FarmStory, FavoriteRecipe, ProductReview
 )
 
 
@@ -92,3 +92,24 @@ class FavoriteRecipeAdmin(admin.ModelAdmin):
     list_display = ("user", "recipe", "saved_at")
     list_filter = ("saved_at",)
     search_fields = ("user__username", "recipe__title")
+
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ("id", "product", "customer", "rating", "title", "created_at", "is_anonymous")
+    list_filter = ("rating", "is_anonymous", "created_at")
+    search_fields = ("product__name", "customer__username", "title", "review_text")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Review Information", {
+            "fields": ("product", "customer", "order", "rating", "title", "review_text", "is_anonymous")
+        }),
+        ("Producer Response", {
+            "fields": ("producer_response", "producer_response_date"),
+            "classes": ("collapse",)
+        }),
+        ("Metadata", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )

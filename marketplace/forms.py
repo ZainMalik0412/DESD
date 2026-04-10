@@ -5,7 +5,7 @@ Author: TJ
 
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Product, Recipe, FarmStory
+from .models import Product, Recipe, FarmStory, ProductReview
 from .services.validators import (
     validate_lead_time,
     validate_uk_postcode,
@@ -309,7 +309,7 @@ class OrderStatusForm(forms.Form):
 
         return new_status
 
-# Lines 303-424 by Alex McBride
+# Lines 303-503 by Alex McBride
 class RecipeForm(forms.ModelForm):
     """Form for producers to create and edit recipes."""
     
@@ -431,3 +431,73 @@ class FarmStoryForm(forms.ModelForm):
         validate_content_moderation(content, "Story content")
         
         return content.strip()
+
+
+class ProductReviewForm(forms.ModelForm):
+    """Form for customers to submit product reviews and ratings."""
+    
+    class Meta:
+        model = ProductReview
+        fields = [
+            'rating',
+            'title',
+            'review_text',
+            'is_anonymous',
+        ]
+        widgets = {
+            'rating': forms.RadioSelect(choices=[
+                (5, '★★★★★ (5 stars)'),
+                (4, '★★★★☆ (4 stars)'),
+                (3, '★★★☆☆ (3 stars)'),
+                (2, '★★☆☆☆ (2 stars)'),
+                (1, '★☆☆☆☆ (1 star)'),
+            ]),
+            'title': forms.TextInput(attrs={
+                'placeholder': 'Brief summary of your review',
+                'maxlength': '200',
+            }),
+            'review_text': forms.Textarea(attrs={
+                'rows': 5,
+                'placeholder': 'Share your experience with this product...',
+            }),
+            'is_anonymous': forms.CheckboxInput(),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Configure field properties
+        self.fields['rating'].help_text = 'Rate your experience with this product'
+        self.fields['title'].help_text = 'Give your review a brief title'
+        self.fields['review_text'].help_text = 'Share details about your experience'
+        self.fields['is_anonymous'].help_text = 'Check to hide your name on this review'
+        self.fields['is_anonymous'].label = 'Post anonymously'
+    
+    def clean_title(self):
+        """Validate review title is not empty and appropriate."""
+        title = self.cleaned_data.get('title')
+        if not title or not title.strip():
+            raise ValidationError("Review title is required")
+        
+        # Apply content moderation
+        validate_content_moderation(title, "Review title")
+        
+        return title.strip()
+    
+    def clean_review_text(self):
+        """Validate review text is not empty and appropriate."""
+        review_text = self.cleaned_data.get('review_text')
+        if not review_text or not review_text.strip():
+            raise ValidationError("Review text is required")
+        
+        # Apply content moderation
+        validate_content_moderation(review_text, "Review text")
+        
+        return review_text.strip()
+    
+    def clean_rating(self):
+        """Validate rating is within allowed range."""
+        rating = self.cleaned_data.get('rating')
+        if rating is not None and (rating < 1 or rating > 5):
+            raise ValidationError("Rating must be between 1 and 5 stars")
+        return rating

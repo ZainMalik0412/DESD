@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.db.models import Q
 
-from .models import Product, Category, Recipe, RecipeProduct, FarmStory, FavoriteRecipe
+from .models import Product, Category, Recipe, RecipeProduct, FarmStory, FavoriteRecipe, Order
 from .forms import ProductForm, RecipeForm, FarmStoryForm
 from accounts.models import CustomUser
 from orders.views import _check_and_create_stock_alert
@@ -95,7 +95,16 @@ def _get_customer_postcode(user):
 # PAGE VIEWS
 
 def browse(request):
+    from django.db.models import Avg, Count
+    
     products = Product.objects.filter(is_available=True).select_related('category', 'producer')
+    
+    # Annotate products with review statistics
+    products = products.annotate(
+        avg_rating=Avg('reviews__rating'),
+        review_count=Count('reviews', distinct=True)
+    )
+    
     categories = Category.objects.filter(is_active=True)
 
     category_slug = request.GET.get('category')
@@ -167,6 +176,7 @@ def producers(request):
 
 def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
+    from .models import ProductReview
 
     customer_postcode = _get_customer_postcode(request.user)
     food_miles = calculate_food_miles(
@@ -179,11 +189,37 @@ def product_detail(request, product_id):
         linked_products__product=product,
         is_published=True
     ).distinct()
+    
+    # Get reviews for this product
+    reviews = ProductReview.objects.filter(product=product).select_related('customer', 'order').order_by('-created_at')
+    
+    # Check if current user can review this product
+    can_review = False
+    has_reviewed = False
+    if request.user.is_authenticated and request.user.role == CustomUser.Role.CUSTOMER:
+        has_reviewed = ProductReview.objects.filter(product=product, customer=request.user).exists()
+        if not has_reviewed:
+            # Check if user has a delivered order with this product
+            from orders.models import Order as OrdersModel
+            can_review = OrdersModel.objects.filter(
+                user=request.user,
+                status=OrdersModel.STATUS_DELIVERED,
+                items__product=product
+            ).exists()
+    
+    # Calculate average rating and review count
+    average_rating = product.get_average_rating()
+    review_count = product.get_review_count()
 
     return render(request, 'marketplace/product_detail.html', {
         'product': product,
         'food_miles': food_miles,
         'linked_recipes': linked_recipes,
+        'reviews': reviews,
+        'can_review': can_review,
+        'has_reviewed': has_reviewed,
+        'average_rating': average_rating,
+        'review_count': review_count,
     })
 
 
@@ -632,4 +668,159 @@ def my_favorite_recipes(request):
     
     return render(request, 'marketplace/my_favorite_recipes.html', {
         'favorites': favorites,
+    })
+
+
+# PRODUCT REVIEW VIEWS
+
+@login_required(login_url='/accounts/login/')
+def submit_review(request, product_id):
+    """View for customers to submit a review for a purchased product."""
+    from .models import ProductReview
+    from .forms import ProductReviewForm
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Check if user has already reviewed this product
+    existing_review = ProductReview.objects.filter(product=product, customer=request.user).first()
+    if existing_review:
+        return render(request, 'marketplace/review_error.html', {
+            'error_message': 'You have already reviewed this product. You can edit your existing review instead.',
+            'review': existing_review,
+        })
+    
+    # Find delivered orders containing this product
+    from orders.models import Order as OrdersModel
+    delivered_orders = OrdersModel.objects.filter(
+        user=request.user,
+        status=OrdersModel.STATUS_DELIVERED,
+        items__product=product
+    ).distinct()
+    
+    if not delivered_orders.exists():
+        return render(request, 'marketplace/review_error.html', {
+            'error_message': 'You can only review products you have purchased and received. This order must be marked as delivered.',
+            'product': product,
+        })
+    
+    # Use the most recent delivered order for the review
+    order = delivered_orders.order_by('-created_at').first()
+    
+    error = None
+    success = None
+    
+    if request.method == 'POST':
+        form = ProductReviewForm(request.POST)
+        if form.is_valid():
+            try:
+                review = form.save(commit=False)
+                review.product = product
+                review.customer = request.user
+                review.order = order
+                review.save()
+                success = f'Your review for "{product.name}" has been submitted successfully!'
+                return redirect('product_detail', product_id=product_id)
+            except Exception as e:
+                error = f'Error submitting review: {e}'
+        else:
+            error = 'Please correct the errors below.'
+    else:
+        form = ProductReviewForm()
+    
+    return render(request, 'marketplace/submit_review.html', {
+        'form': form,
+        'product': product,
+        'order': order,
+        'error': error,
+        'success': success,
+    })
+
+
+@login_required(login_url='/accounts/login/')
+def edit_review(request, review_id):
+    """View for customers to edit their existing review."""
+    from .models import ProductReview
+    from .forms import ProductReviewForm
+    
+    review = get_object_or_404(ProductReview, id=review_id, customer=request.user)
+    
+    error = None
+    success = None
+    
+    if request.method == 'POST':
+        form = ProductReviewForm(request.POST, instance=review)
+        if form.is_valid():
+            form.save()
+            success = f'Your review for "{review.product.name}" has been updated successfully!'
+            return redirect('product_detail', product_id=review.product.id)
+        else:
+            error = 'Please correct the errors below.'
+    else:
+        form = ProductReviewForm(instance=review)
+    
+    return render(request, 'marketplace/edit_review.html', {
+        'form': form,
+        'review': review,
+        'error': error,
+        'success': success,
+    })
+
+
+@login_required(login_url='/accounts/login/')
+def delete_review(request, review_id):
+    """View for customers to delete their review."""
+    from .models import ProductReview
+    
+    review = get_object_or_404(ProductReview, id=review_id, customer=request.user)
+    product_id = review.product.id
+    
+    if request.method == 'POST':
+        review.delete()
+        return redirect('product_detail', product_id=product_id)
+    
+    return render(request, 'marketplace/delete_review.html', {'review': review})
+
+
+@login_required(login_url='/accounts/login/')
+def producer_respond_review(request, review_id):
+    """View for producers to respond to reviews on their products."""
+    from .models import ProductReview
+    from django.utils import timezone
+    
+    review = get_object_or_404(ProductReview, id=review_id, product__producer=request.user)
+    
+    error = None
+    success = None
+    
+    if request.method == 'POST':
+        response_text = request.POST.get('producer_response', '').strip()
+        
+        if not response_text:
+            error = 'Response cannot be empty.'
+        else:
+            try:
+                review.producer_response = response_text
+                review.producer_response_date = timezone.now()
+                review.save()
+                success = 'Your response has been posted successfully!'
+                return redirect('product_detail', product_id=review.product.id)
+            except Exception as e:
+                error = f'Error posting response: {e}'
+    
+    return render(request, 'marketplace/producer_respond_review.html', {
+        'review': review,
+        'error': error,
+        'success': success,
+    })
+
+
+@login_required(login_url='/accounts/login/')
+def my_reviews(request):
+    """View for customers to see all their reviews."""
+    from .models import ProductReview
+    
+    reviews = ProductReview.objects.filter(customer=request.user).select_related('product', 'order')
+    
+    return render(request, 'marketplace/my_reviews.html', {
+        'reviews': reviews,
     })

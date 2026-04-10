@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Reports – BRFN Admin</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse</a>
+            {% if user.is_authenticated %}
+                {% if user.role == 'admin' %}
+                    <a href="/orders/admin/financial-reports/">Financial Reports</a>
+                    <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+                {% endif %}
+                <div class="user-menu" onclick="this.classList.toggle('open')">
+                    <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                    <div class="user-dropdown">
+                        <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">
+                            {% csrf_token %}
+                            <button type="submit" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">
+                                Log Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main class="main-content" style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
+        <h2>Network Commission Financial Reports</h2>
+        
+        <!-- Date Range Filter -->
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <h3 style="margin-top: 0;">Date Range Filter</h3>
+            <form method="get" style="display: flex; gap: 1rem; align-items: end;">
+                <div>
+                    <label for="start_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" 
+                           style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div>
+                    <label for="end_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">End Date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}"
+                           style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <button type="submit" style="padding: 0.5rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Generate Report
+                </button>
+                <a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                   onclick="event.preventDefault(); window.location.href='/orders/admin/financial-reports/csv/' + window.location.search;"
+                   style="padding: 0.5rem 1.5rem; background: #28a745; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">
+                    Download CSV
+                </a>
+            </form>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 8px;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #1976d2;">Period Total Revenue</h4>
+                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;">£{{ total_order_value|floatformat:2 }}</p>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #666;">{{ order_count }} orders</p>
+            </div>
+            <div style="background: #fff3e0; padding: 1.5rem; border-radius: 8px;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #f57c00;">Network Commission (5%)</h4>
+                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;">£{{ total_commission|floatformat:2 }}</p>
+            </div>
+            <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 8px;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #388e3c;">Producer Payments (95%)</h4>
+                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;">£{{ total_producer_payment|floatformat:2 }}</p>
+            </div>
+        </div>
+
+        <!-- Monthly Summary Box -->
+        <div style="background: #f3e5f5; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <h3 style="margin-top: 0;">Current Month Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <div>
+                    <strong>Total Sales:</strong> £{{ monthly_total|floatformat:2 }}
+                </div>
+                <div>
+                    <strong>Commission:</strong> £{{ monthly_commission|floatformat:2 }}
+                </div>
+                <div>
+                    <strong>Orders:</strong> {{ monthly_count }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Year-to-Date Summary Box -->
+        <div style="background: #fce4ec; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <h3 style="margin-top: 0;">Year-to-Date Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <div>
+                    <strong>Total Sales:</strong> £{{ ytd_total|floatformat:2 }}
+                </div>
+                <div>
+                    <strong>Commission:</strong> £{{ ytd_commission|floatformat:2 }}
+                </div>
+                <div>
+                    <strong>Orders:</strong> {{ ytd_count }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Table -->
+        <h3>Order Breakdown ({{ start_date|date:'M d, Y' }} – {{ end_date|date:'M d, Y' }})</h3>
+        
+        {% if orders %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead style="background: #343a40; color: white;">
+                    <tr>
+                        <th style="padding: 1rem; text-align: left;">Order ID</th>
+                        <th style="padding: 1rem; text-align: left;">Date</th>
+                        <th style="padding: 1rem; text-align: left;">Customer</th>
+                        <th style="padding: 1rem; text-align: right;">Order Total</th>
+                        <th style="padding: 1rem; text-align: right;">Commission (5%)</th>
+                        <th style="padding: 1rem; text-align: right;">Producer Payment (95%)</th>
+                        <th style="padding: 1rem; text-align: center;">Status</th>
+                        <th style="padding: 1rem; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order_detail in orders %}
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 1rem;">{{ order_detail.order.id }}</td>
+                        <td style="padding: 1rem;">{{ order_detail.order.created_at|date:'Y-m-d' }}</td>
+                        <td style="padding: 1rem;">{{ order_detail.order.full_name }}</td>
+                        <td style="padding: 1rem; text-align: right;">£{{ order_detail.order.total|floatformat:2 }}</td>
+                        <td style="padding: 1rem; text-align: right;">£{{ order_detail.order.commission|floatformat:2 }}</td>
+                        <td style="padding: 1rem; text-align: right;">£{{ order_detail.order.producer_payment|floatformat:2 }}</td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <span style="padding: 0.25rem 0.75rem; background: #28a745; color: white; border-radius: 12px; font-size: 0.85rem;">
+                                {{ order_detail.order.get_status_display }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <a href="{% url 'orders:admin_order_detail' order_detail.order.id %}" 
+                               style="color: #007bff; text-decoration: none;">View Details</a>
+                        </td>
+                    </tr>
+                    {% if order_detail.producer_breakdown|length > 1 %}
+                    <tr style="background: #f8f9fa;">
+                        <td colspan="8" style="padding: 0.5rem 1rem 1rem 2rem;">
+                            <strong>Multi-vendor order breakdown:</strong><br>
+                            {% for producer_data in order_detail.producer_breakdown %}
+                            <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-left: 3px solid #007bff;">
+                                Producer: <strong>{{ producer_data.producer.username }}</strong> | 
+                                Subtotal: £{{ producer_data.subtotal|floatformat:2 }} | 
+                                Commission: £{{ producer_data.commission|floatformat:2 }} | 
+                                Payment: £{{ producer_data.payment|floatformat:2 }}
+                            </div>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="padding: 2rem; background: #f8f9fa; text-align: center; border-radius: 8px;">
+            No orders found for the selected date range.
+        </p>
+        {% endif %}
+    </main>
+
+    <footer style="text-align: center; padding: 2rem; background: #f8f9fa; margin-top: 4rem;">
+        <p>&copy; 2026 Bristol Regional Food Network. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

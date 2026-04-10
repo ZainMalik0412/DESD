@@ -16,13 +16,17 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-                {% if user.role == 'producer' %}
+                {% if user.role == 'admin' %}
+                    <a href="/orders/admin/financial-reports/">Financial Reports</a>
+                    <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+                {% elif user.role == 'producer' %}
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
                 {% else %}
                     <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
                     <a href="/orders/my-orders/">My Orders</a>
                     <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
+                    <a href="/browse/my-reviews/">My Reviews</a>
                 {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
                     <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
@@ -105,7 +109,16 @@
                 <tbody>
                     {% for item in group.items %}
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 0.75rem;">{{ item.product_name }}</td>
+                        <td style="padding: 0.75rem;">
+                            {% if item.product %}
+                            <a href="/browse/product/{{ item.product.id }}/" style="color: #333; text-decoration: none;">{{ item.product_name }}</a>
+                            {% if order.status == 'delivered' %}
+                                <br><a href="/browse/product/{{ item.product.id }}/review/" style="font-size: 0.85rem; color: #4a7c59; margin-top: 0.25rem; display: inline-block;">Write Review</a>
+                            {% endif %}
+                            {% else %}
+                            {{ item.product_name }}
+                            {% endif %}
+                        </td>
                         <td style="padding: 0.75rem;">£{{ item.unit_price }}</td>
                         <td style="padding: 0.75rem;">{{ item.quantity }}</td>
                         <td style="padding: 0.75rem;"><strong>£{{ item.line_total }}</strong></td>

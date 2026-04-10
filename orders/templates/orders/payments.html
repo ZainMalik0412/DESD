@@ -16,7 +16,10 @@
             <a href="/browse/">Browse</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-                {% if user.role == 'producer' %}
+                {% if user.role == 'admin' %}
+                    <a href="/orders/admin/financial-reports/">Financial Reports</a>
+                    <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+                {% elif user.role == 'producer' %}
                     <a href="/browse/add-product/">Add Product</a>
                     <a href="/orders/manage/">Manage Orders</a>
                     <a href="/orders/stock-alerts/">Stock Alerts</a>
@@ -25,8 +28,7 @@
                 {% else %}
                     <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
                     <a href="/orders/my-orders/">My Orders</a>
-                    <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
-                {% endif %}
+                    <a href="/browse/favorite-recipes/">My Favorite Recipes</a>                    <a href="/browse/my-reviews/">My Reviews</a>                {% endif %}
                 <div class="user-menu" onclick="this.classList.toggle('open')">
                     <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
                     <div class="user-dropdown">

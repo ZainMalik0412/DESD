@@ -18,7 +18,10 @@
             <a href="/browse/stories/">Farm Stories</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-            {% if user.role == 'producer' %}
+            {% if user.role == 'admin' %}
+            <a href="/orders/admin/financial-reports/">Financial Reports</a>
+            <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+            {% elif user.role == 'producer' %}
             <a href="/browse/add-product/">Add Product</a>
             <a href="/browse/my-products/">My Products</a>
             <a href="/browse/my-recipes/">My Recipes</a>
@@ -29,6 +32,7 @@
             <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
             <a href="/orders/my-orders/">My Orders</a>
             <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
+            <a href="/browse/my-reviews/">My Reviews</a>
             {% endif %}
             <div class="user-menu" onclick="this.classList.toggle('open')">
                 <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
@@ -131,6 +135,24 @@
                 <button type="submit" class="btn" style="width: auto;">Add to Cart</button>
             </form>
             {% endif %}
+            
+            <!-- Write Review Button - Prominent placement -->
+            {% if user.is_authenticated and user.role == 'customer' %}
+                {% if can_review and not has_reviewed %}
+                <div style="margin-top: 1rem; padding: 1rem; background: #e8f5e9; border: 2px solid #4CAF50; border-radius: 8px;">
+                    <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #2e7d32;">
+                        ✓ You purchased this product! Share your experience:
+                    </p>
+                    <a href="/browse/product/{{ product.id }}/review/" class="btn" style="background: #4CAF50; color: white; display: inline-block; font-size: 1rem; padding: 0.6rem 1.2rem;">
+                        ⭐ Write a Review
+                    </a>
+                </div>
+                {% elif has_reviewed %}
+                <div style="margin-top: 1rem; padding: 0.75rem; background: #f0f0f0; border-radius: 6px; font-size: 0.9rem;">
+                    <span style="color: #666;">✓ You've already reviewed this product</span>
+                </div>
+                {% endif %}
+            {% endif %}
 
             {% if user.is_authenticated and user == product.producer %}
             <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
@@ -158,6 +180,90 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Reviews Section -->
+        <div style="max-width: 700px; margin-top: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">Customer Reviews</h3>
+                {% if can_review and not has_reviewed %}
+                <a href="/browse/product/{{ product.id }}/review/" class="btn" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">Write a Review</a>
+                {% endif %}
+            </div>
+
+            {% if average_rating > 0 %}
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #f5a623;">{{ average_rating|floatformat:1 }}</div>
+                    <div>
+                        <div style="font-size: 1.5rem; color: #f5a623;">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= average_rating %}★{% else %}☆{% endif %}
+                            {% endfor %}
+                        </div>
+                        <p style="margin: 0; color: #666; font-size: 0.9rem;">Based on {{ review_count }} review{{ review_count|pluralize }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if reviews %}
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                {% for review in reviews %}
+                <div style="background: white; padding: 1.5rem; border: 1px solid #e0e0e0; border-radius: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <div style="color: #f5a623; margin-bottom: 0.25rem;">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}
+                                {% endfor %}
+                            </div>
+                            <p style="margin: 0; font-weight: bold;">{{ review.title }}</p>
+                        </div>
+                        {% if review.is_verified_purchase %}
+                        <span style="background: #e8f5e9; color: #2e7d32; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">✓ Verified Purchase</span>
+                        {% endif %}
+                    </div>
+                    
+                    <p style="margin: 0.5rem 0 1rem 0;">{{ review.review_text }}</p>
+                    
+                    <p style="margin: 0; font-size: 0.85rem; color: #666;">
+                        By {{ review.display_name }} on {{ review.created_at|date:"F d, Y" }}
+                    </p>
+
+                    {% if review.producer_response %}
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-top: 1rem; border-left: 3px solid #4caf50;">
+                        <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #2e7d32;">Producer's Response:</p>
+                        <p style="margin: 0;">{{ review.producer_response }}</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #666;">
+                            {{ review.producer_response_date|date:"F d, Y" }}
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% if user.is_authenticated %}
+                        {% if user == review.customer %}
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                            <a href="/browse/review/{{ review.id }}/edit/" class="btn-primary" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">Edit</a>
+                        </div>
+                        {% elif user == product.producer and not review.producer_response %}
+                        <div style="margin-top: 1rem;">
+                            <a href="/browse/review/{{ review.id }}/respond/" class="btn-primary" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">Respond</a>
+                        </div>
+                        {% elif user == product.producer and review.producer_response %}
+                        <div style="margin-top: 1rem;">
+                            <a href="/browse/review/{{ review.id }}/respond/" class="btn-primary" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">Edit Response</a>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 4px;">
+                <p style="margin: 0; color: #666;">No reviews yet. Be the first to review this product!</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
     <footer>&copy; 2026 Bristol Regional Food Network</footer>

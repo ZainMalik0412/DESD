@@ -30,4 +30,11 @@ urlpatterns = [
     
     # Producer Profile
     path('producer/<int:producer_id>/', views.producer_profile, name='producer_profile'),
+    
+    # Product Review URLs
+    path('product/<int:product_id>/review/', views.submit_review, name='submit_review'),
+    path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
+    path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
+    path('review/<int:review_id>/respond/', views.producer_respond_review, name='producer_respond_review'),
+    path('my-reviews/', views.my_reviews, name='my_reviews'),
 ]

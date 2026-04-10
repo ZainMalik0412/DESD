@@ -20,4 +20,9 @@ urlpatterns = [
     path("stock-alerts/", views.stock_alerts, name="stock_alerts"),
     path("payments/", views.payments, name="payments"),
     path("payments/report/csv/", views.payments_report_csv, name="payments_report_csv"),
+    # Admin financial reporting URLs
+    path("admin/financial-reports/", views.admin_financial_reports, name="admin_financial_reports"),
+    path("admin/financial-reports/csv/", views.admin_financial_reports_csv, name="admin_financial_reports_csv"),
+    path("admin/order/<int:order_id>/", views.admin_order_detail, name="admin_order_detail"),
+    path("admin/monthly-summary/", views.admin_monthly_summary, name="admin_monthly_summary"),
 ]

@@ -79,7 +79,7 @@
     "is_staff": true,
     "is_active": true,
     "date_joined": "2026-04-05T14:44:43.755Z",
-    "role": "customer",
+    "role": "admin",
     "phone": "1",
     "delivery_address": "45 Park Street, Bristol",
     "postcode": "BS1 5JG",

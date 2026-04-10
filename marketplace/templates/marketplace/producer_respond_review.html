@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respond to Review – BRFN</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body class="app-body">
+    <header>
+        <h1><a href="/" class="brand-link">Bristol Regional Food Network</a></h1>
+        <nav>
+            <a href="/browse/">Browse Products</a>
+            <a href="/browse/recipes/">Recipes</a>
+            <a href="/browse/stories/">Farm Stories</a>
+            <a href="/browse/producers/">Producers</a>
+            {% if user.is_authenticated %}
+            {% if user.role == 'admin' %}
+            <a href="/orders/admin/financial-reports/">Financial Reports</a>
+            <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+            {% elif user.role == 'producer' %}
+            <a href="/browse/add-product/">Add Product</a>
+            <a href="/browse/my-products/">My Products</a>
+            <a href="/browse/my-recipes/">My Recipes</a>
+            <a href="/browse/my-stories/">My Stories</a>
+            <a href="/orders/manage/">Manage Orders</a>
+            <a href="/orders/stock-alerts/">Stock Alerts</a>
+            {% else %}
+            <a href="/orders/cart/">Cart{% if cart_item_count %} ({{ cart_item_count }}){% endif %}</a>
+            <a href="/orders/my-orders/">My Orders</a>
+            <a href="/browse/favorite-recipes/">My Favorite Recipes</a>
+            <a href="/browse/my-reviews/">My Reviews</a>
+            {% endif %}
+            <div class="user-menu" onclick="this.classList.toggle('open')">
+                <span class="user-badge">{{ user.username }} ({{ user.role }})</span>
+                <div class="user-dropdown">
+                    <form method="post" action="/accounts/logout/" style="display:inline;margin:0;padding:0">{% csrf_token %}<button type="submit" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">Log Out</button></form>
+                </div>
+            </div>
+            {% else %}
+            <a href="/accounts/login/">Log In</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <div class="page-wide">
+        <p class="link" style="text-align: left; margin-bottom: 1rem;"><a href="/browse/product/{{ review.product.id }}/">← Back to Product</a></p>
+
+        <div class="form-card">
+            <h2>Respond to Review</h2>
+            
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 0.5rem 0;">{{ review.product.name }}</h3>
+                <p style="margin: 0 0 0.5rem 0;">
+                    <strong>Rating:</strong> 
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}
+                    {% endfor %}
+                </p>
+                <p style="margin: 0 0 0.5rem 0;"><strong>{{ review.title }}</strong></p>
+                <p style="margin: 0 0 0.5rem 0;">{{ review.review_text }}</p>
+                <p style="margin: 0; font-size: 0.85rem; color: #666;">
+                    By {{ review.display_name }} on {{ review.created_at|date:"F d, Y" }}
+                </p>
+            </div>
+
+            {% if review.producer_response %}
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                <p style="margin: 0 0 0.5rem 0;"><strong>Your Current Response:</strong></p>
+                <p style="margin: 0;">{{ review.producer_response }}</p>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #666;">
+                    Posted on {{ review.producer_response_date|date:"F d, Y" }}
+                </p>
+            </div>
+            {% endif %}
+
+            {% if error %}
+            <p class="error">{{ error }}</p>
+            {% endif %}
+
+            {% if success %}
+            <p class="success">{{ success }}</p>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="producer_response">Your Response</label>
+                    <textarea name="producer_response" id="producer_response" rows="5" 
+                              placeholder="Write your response to this review..." 
+                              style="width: 100%; padding: 0.5rem;">{% if review.producer_response %}{{ review.producer_response }}{% endif %}</textarea>
+                    <small>This will be publicly visible alongside the review.</small>
+                </div>
+
+                <button type="submit" class="btn">{% if review.producer_response %}Update{% else %}Post{% endif %} Response</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>&copy; 2026 Bristol Regional Food Network</footer>
+</body>
+
+</html>

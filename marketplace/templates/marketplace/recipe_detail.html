@@ -18,7 +18,10 @@
             <a href="/browse/stories/">Farm Stories</a>
             <a href="/browse/producers/">Producers</a>
             {% if user.is_authenticated %}
-            {% if user.role == 'producer' %}
+            {% if user.role == 'admin' %}
+            <a href="/orders/admin/financial-reports/">Financial Reports</a>
+            <a href="/orders/admin/monthly-summary/">Monthly Summary</a>
+            {% elif user.role == 'producer' %}
             <a href="/browse/my-products/">My Products</a>
             <a href="/browse/my-recipes/">My Recipes</a>
             <a href="/browse/my-stories/">My Stories</a>
