@@ -67,9 +67,11 @@ variable "desired_count" {
 variable "github_org" {
   description = "GitHub organization or username"
   type        = string
+  default     = "ZainMalik0412"
 }
 
 variable "github_repo" {
   description = "GitHub repository name"
   type        = string
+  default     = "DESD"
 }
