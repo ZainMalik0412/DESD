@@ -13,8 +13,8 @@ staticfiles/
 media/
 
 # Terraform
-infrastructure/.terraform/
-infrastructure/*.tfstate
-infrastructure/*.tfstate.backup
-infrastructure/.terraform.lock.hcl
-infrastructure/terraform.tfvars
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/.terraform.lock.hcl
+infra/terraform.tfvars

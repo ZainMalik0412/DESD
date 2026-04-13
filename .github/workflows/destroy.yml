@@ -20,7 +20,7 @@ permissions:
 
 env:
   AWS_REGION: eu-west-2
-  TF_WORKING_DIR: infrastructure
+  TF_WORKING_DIR: infra
   ECS_CLUSTER: brfnapp-cluster
   ECS_SERVICE: brfnapp-web
 

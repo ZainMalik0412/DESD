@@ -18,7 +18,7 @@ env:
   ECS_CLUSTER: brfnapp-cluster
   ECS_SERVICE: brfnapp-web
   CONTAINER_NAME: web
-  TF_WORKING_DIR: infrastructure
+  TF_WORKING_DIR: infra
 
 permissions:
   id-token: write
@@ -62,6 +62,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y default-libmysqlclient-dev pkg-config
 
       - name: Install Python dependencies
+        working-directory: app
         run: pip install -r requirements.txt
 
       - name: Run Django system checks
@@ -75,6 +76,7 @@ jobs:
           DJANGO_SECRET_KEY: ci-test-secret-key
           DJANGO_DEBUG: "True"
           DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+        working-directory: app
         run: python manage.py check
 
       - name: Run migrations
@@ -88,6 +90,7 @@ jobs:
           DJANGO_SECRET_KEY: ci-test-secret-key
           DJANGO_DEBUG: "True"
           DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+        working-directory: app
         run: python manage.py migrate --noinput
 
   # ============================================
@@ -130,7 +133,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TF_CHANGED=1
           else
-            TF_CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'infrastructure/' 2>/dev/null | wc -l | tr -d ' ')
+            TF_CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'infra/' 2>/dev/null | wc -l | tr -d ' ')
           fi
 
           echo "Cluster: $CLUSTER_EXISTS, Service: $SERVICE_EXISTS, ECR: $ECR_EXISTS, TF Changed: $TF_CHANGED"
@@ -308,7 +311,7 @@ jobs:
             --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
             --push \
-            .
+            ./app
 
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
