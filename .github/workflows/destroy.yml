@@ -65,9 +65,38 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init
 
+      - name: Remove IAM resources from state (prevent self-credential destruction)
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          # The runner authenticates via the GitHub Actions IAM role.
+          # If Terraform deletes that role mid-destroy, all API calls fail.
+          # Remove these from state so Terraform skips them, then clean up via CLI after.
+          terraform state rm aws_iam_openid_connect_provider.github 2>/dev/null || true
+          terraform state rm aws_iam_role.github_actions 2>/dev/null || true
+          terraform state rm aws_iam_role_policy.github_actions_ecr 2>/dev/null || true
+          terraform state rm aws_iam_role_policy.github_actions_ecs 2>/dev/null || true
+          terraform state rm aws_iam_role_policy.github_actions_infra 2>/dev/null || true
+          terraform state rm aws_iam_role_policy.github_actions_terraform 2>/dev/null || true
+          echo "Removed IAM resources from Terraform state"
+
       - name: Terraform Destroy
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -auto-approve -parallelism=20
+
+      - name: Clean up IAM resources via CLI
+        run: |
+          ROLE_NAME="brfnapp-github-actions"
+
+          # Delete inline policies
+          for policy in ecr-push ecs-deploy infra-management terraform-state; do
+            aws iam delete-role-policy --role-name "$ROLE_NAME" --policy-name "$policy" 2>/dev/null || true
+          done
+
+          # Delete the role
+          aws iam delete-role --role-name "$ROLE_NAME" 2>/dev/null || true
+          echo "Cleaned up GitHub Actions IAM role"
+
+          # Do NOT delete the OIDC provider — it is shared across the AWS account
 
       - name: Clean up ECR images
         run: |
