@@ -83,21 +83,6 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -auto-approve -parallelism=20
 
-      - name: Clean up IAM resources via CLI
-        run: |
-          ROLE_NAME="brfnapp-github-actions"
-
-          # Delete inline policies
-          for policy in ecr-push ecs-deploy infra-management terraform-state; do
-            aws iam delete-role-policy --role-name "$ROLE_NAME" --policy-name "$policy" 2>/dev/null || true
-          done
-
-          # Delete the role
-          aws iam delete-role --role-name "$ROLE_NAME" 2>/dev/null || true
-          echo "Cleaned up GitHub Actions IAM role"
-
-          # Do NOT delete the OIDC provider — it is shared across the AWS account
-
       - name: Clean up ECR images
         run: |
           IMAGES=$(aws ecr list-images --repository-name brfnapp/web --query 'imageIds[*]' --output json 2>/dev/null || echo "[]")
