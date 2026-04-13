@@ -40,5 +40,8 @@ Thumbs.db
 *.txt
 !requirements.txt
 
+# Infrastructure
+infrastructure/
+
 # Collected static (built inside container)
 staticfiles/

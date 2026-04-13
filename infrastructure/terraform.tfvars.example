@@ -1,0 +1,16 @@
+aws_region    = "eu-west-2"
+environment   = "production"
+project_name  = "brfnapp"
+domain_name   = "brfnapp.com"
+
+db_name     = "brfn_db"
+db_username = "brfn_user"
+
+container_port = 8000
+cpu            = 256
+memory         = 512
+desired_count  = 2
+
+# REQUIRED — update these with your GitHub details
+github_org  = "your-github-username"
+github_repo = "DESD"

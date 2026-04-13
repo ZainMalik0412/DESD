@@ -15,6 +15,31 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:latest
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs
+      DEFAULT_REGION: eu-west-2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build:
       context: .
@@ -33,6 +58,8 @@ services:
       DJANGO_SECRET_KEY: change-me-in-production
       DJANGO_DEBUG: "True"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      REDIS_URL: redis://redis:6379/0
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/brfnapp-events
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       EMAIL_BACKEND: ${EMAIL_BACKEND}
@@ -41,6 +68,8 @@ services:
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - static_files:/app/staticfiles

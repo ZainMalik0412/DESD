@@ -11,3 +11,10 @@ staticfiles/
 .windsurf/
 .env
 media/
+
+# Terraform
+infrastructure/.terraform/
+infrastructure/*.tfstate
+infrastructure/*.tfstate.backup
+infrastructure/.terraform.lock.hcl
+infrastructure/terraform.tfvars

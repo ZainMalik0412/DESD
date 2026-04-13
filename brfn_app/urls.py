@@ -11,6 +11,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path("orders/", include("orders.urls")),
     path("terms/", views.terms, name="terms"),
+    path("health/", views.health, name="health"),
     path('api/', include('marketplace.api.urls')),  # Products/Categories API
     path('api/', include('orders.api.urls')),        # Cart/Orders API
 ]

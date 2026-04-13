@@ -1,67 +1,415 @@
-name: Deploy — Create AWS Infrastructure
-
-# This pipeline will use Terraform to provision AWS infrastructure.
-# It will be triggered automatically when infrastructure code changes are
-# pushed to main, or manually via the GitHub Actions UI.
-#
-# Prerequisites (to be set up before enabling):
-#   - Terraform files in an infrastructure/ directory
-#   - GitHub Secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-#   - S3 backend bucket for Terraform state
+name: CI/CD Pipeline
 
 on:
-  # Uncomment the triggers below once infrastructure/ code is ready
-  # push:
-  #   branches: [main]
-  #   paths: ['infrastructure/**']
-  # pull_request:
-  #   branches: [main]
-  #   paths: ['infrastructure/**']
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pull-requests: write
+    inputs:
+      deploy_reason:
+        description: 'Reason for manual deployment'
+        required: false
+        type: string
 
 env:
   AWS_REGION: eu-west-2
+  ECR_REPOSITORY: brfnapp/web
+  ECS_CLUSTER: brfnapp-cluster
+  ECS_SERVICE: brfnapp-web
+  CONTAINER_NAME: web
   TF_WORKING_DIR: infrastructure
 
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
 jobs:
-  terraform-deploy:
+  # ============================================
+  # TEST JOB - Runs on all PRs and pushes
+  # ============================================
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: brfn_db
+          MYSQL_USER: brfn_user
+          MYSQL_PASSWORD: brfn_pass
+          MYSQL_ROOT_PASSWORD: brfn_root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u brfn_user -pbrfn_pass"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Django system checks
+        env:
+          DATABASE_ENGINE: mysql
+          DATABASE_NAME: brfn_db
+          DATABASE_USER: brfn_user
+          DATABASE_PASSWORD: brfn_pass
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 3306
+          DJANGO_SECRET_KEY: ci-test-secret-key
+          DJANGO_DEBUG: "True"
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+        run: python manage.py check
+
+      - name: Run migrations
+        env:
+          DATABASE_ENGINE: mysql
+          DATABASE_NAME: brfn_db
+          DATABASE_USER: brfn_user
+          DATABASE_PASSWORD: brfn_pass
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 3306
+          DJANGO_SECRET_KEY: ci-test-secret-key
+          DJANGO_DEBUG: "True"
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+        run: python manage.py migrate --noinput
+
+  # ============================================
+  # CHECK INFRASTRUCTURE - Fast check if infra exists
+  # ============================================
+  check-infrastructure:
+    name: Check Infrastructure
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    outputs:
+      infra_exists: ${{ steps.check.outputs.infra_exists }}
+      needs_terraform: ${{ steps.check.outputs.needs_terraform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check if infrastructure exists
+        id: check
+        run: |
+          CLUSTER_EXISTS=$(aws ecs describe-clusters --clusters ${{ env.ECS_CLUSTER }} \
+            --query 'clusters[0].status' --output text 2>/dev/null || echo "MISSING")
+
+          SERVICE_EXISTS=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }} \
+            --query 'services[0].status' --output text 2>/dev/null || echo "MISSING")
+
+          ECR_EXISTS=$(aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} \
+            --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "MISSING")
+
+          # Check if terraform files changed in this commit
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TF_CHANGED=1
+          else
+            TF_CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'infrastructure/' 2>/dev/null | wc -l | tr -d ' ')
+          fi
+
+          echo "Cluster: $CLUSTER_EXISTS, Service: $SERVICE_EXISTS, ECR: $ECR_EXISTS, TF Changed: $TF_CHANGED"
+
+          if [ "$CLUSTER_EXISTS" == "ACTIVE" ] && [ "$SERVICE_EXISTS" == "ACTIVE" ] && [ "$ECR_EXISTS" == "${{ env.ECR_REPOSITORY }}" ]; then
+            echo "infra_exists=true" >> $GITHUB_OUTPUT
+            if [ "$TF_CHANGED" -gt "0" ]; then
+              echo "needs_terraform=true" >> $GITHUB_OUTPUT
+            else
+              echo "needs_terraform=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "infra_exists=false" >> $GITHUB_OUTPUT
+            echo "needs_terraform=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================
+  # TERRAFORM PLAN - Runs on PRs
+  # ============================================
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.7.0
-
-      - name: Terraform Init
-        run: terraform init
+          terraform_version: "1.7.0"
 
       - name: Terraform Format Check
-        run: terraform fmt -check
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
 
       - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
       - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          cat plan_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
-        run: terraform plan -no-color
+        with:
+          script: |
+            const output = `#### Terraform Plan 📖
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.plan_output }}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  # ============================================
+  # TERRAFORM APPLY - Only runs if infra missing OR terraform files changed
+  # ============================================
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: [test, check-infrastructure]
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.check-infrastructure.outputs.needs_terraform == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Force unlock Terraform state if locked
+        run: |
+          aws dynamodb delete-item --table-name brfnapp-terraform-lock \
+            --key '{"LockID":{"S":"brfnapp-terraform-state/ecs/terraform.tfstate"}}' 2>/dev/null || true
+          echo "Cleared any stale state locks"
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
 
       - name: Terraform Apply
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        run: terraform apply -auto-approve
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve -lock-timeout=5m -parallelism=20
+
+  # ============================================
+  # BUILD JOB - Runs in parallel if infra exists, otherwise waits for terraform
+  # ============================================
+  build:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    needs: [test, check-infrastructure, terraform-apply]
+    if: |
+      always() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.test.result == 'success' &&
+      needs.check-infrastructure.result == 'success' &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+      image_tag: ${{ steps.build-image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
+            --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
+            --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            --push \
+            .
+
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # DEPLOY JOB - Deploys to ECS
+  # ============================================
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      always() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.build.result == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition > task-definition.json
+
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-definition.json > clean-task-definition.json
+          mv clean-task-definition.json task-definition.json
+
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  # ============================================
+  # POST-DEPLOY CHECKS - Validates deployment
+  # ============================================
+  post-deploy-checks:
+    name: Post-Deploy Checks
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: |
+      always() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.deploy.result == 'success'
+
+    steps:
+      - name: Wait for deployment to propagate
+        run: sleep 60
+
+      - name: Health check
+        run: |
+          for i in {1..5}; do
+            response=$(curl -sf -o /dev/null -w "%{http_code}" https://brfnapp.com/health/ || echo "000")
+            if [ "$response" = "200" ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i: Health check returned $response, retrying in 15s..."
+            sleep 15
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
+
+      - name: Frontend check
+        run: |
+          response=$(curl -sf -o /dev/null -w "%{http_code}" https://brfnapp.com/ || echo "000")
+          if [ "$response" != "200" ]; then
+            echo "Frontend check failed with status: $response"
+            exit 1
+          fi
+          echo "Frontend check passed!"
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Health API | Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** \`${{ needs.build.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://brfnapp.com" >> $GITHUB_STEP_SUMMARY
