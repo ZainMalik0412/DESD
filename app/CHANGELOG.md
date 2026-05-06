@@ -324,7 +324,7 @@
   - Cleared existing FavoriteRecipe data before fixture reload
   - Prevented duplicate (user_id, recipe_id) entries
 - Financial compliance features:
-  - 5% network commission consistently applied across all orders
+  - 6% network commission consistently applied across all orders
   - Multi-vendor order commission calculated on total order value
   - Producer payments calculated per supplier (95% of their subtotal)
   - All calculations accurate to 2 decimal places
